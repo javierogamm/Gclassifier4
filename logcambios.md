@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.3.0
+
+- Se añadió un modal para listar valores únicos de "modelo" y aplicar el filtro antes de consultar la tabla de carga.
+- Se eliminó el botón de carga para vinculación en el catálogo y se actualizó el botón de carga a selección de cuadro (Carga).
+- Se incorporó la versión visible de la aplicación en la interfaz principal.
+
 ## v0.2.0
 
 - Se actualizó el esquema de Supabase para reflejar las tablas `series_carga` y `series_vinculacion` con sus nuevas columnas.

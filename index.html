@@ -127,6 +127,44 @@
         padding: 12px;
         border-radius: 10px;
       }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.45);
+        padding: 24px;
+      }
+
+      .modal[hidden] {
+        display: none;
+      }
+
+      .modal-content {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px;
+        max-width: 560px;
+        width: 100%;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+        display: grid;
+        gap: 16px;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+      }
     </style>
     <script src="/api/env.js"></script>
   </head>
@@ -137,6 +175,7 @@
         Frontend estático listo para Vercel con validación de entorno y ping
         real vía RPC.
       </p>
+      <p class="muted"><strong>Versión:</strong> v0.3.0</p>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>
@@ -173,6 +212,17 @@
       <h2>Resultados</h2>
       <div id="results"></div>
     </section>
+
+    <div id="model-modal" class="modal" hidden>
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="model-modal-title">
+        <div class="modal-header">
+          <h3 id="model-modal-title">Selecciona un modelo</h3>
+          <button id="model-modal-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <p id="model-modal-message" class="muted"></p>
+        <div id="model-list" class="modal-grid"></div>
+      </div>
+    </div>
 
     <script type="module" src="/js/app.js"></script>
   </body>
