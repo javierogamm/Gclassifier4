@@ -8,11 +8,13 @@ const statusTextEl = document.getElementById('status-text');
 const statusBadgeEl = document.getElementById('status-badge');
 const statusDetailEl = document.getElementById('status-detail');
 const pingButton = document.getElementById('ping-button');
-const limitSelect = document.getElementById('limit-select');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
 const resultsEl = document.getElementById('results');
 const vercelWarningEl = document.getElementById('vercel-warning');
+const modelSelectorEl = document.getElementById('model-selector');
+const modelSelectEl = document.getElementById('model-select');
+const modelTableEl = document.getElementById('model-table');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -26,6 +28,7 @@ const PLACEHOLDER_PATTERNS = [
 
 let supabaseClient = null;
 let activeCatalog = null;
+let activeTable = null;
 
 function setStatus(state, text, detail, badge = 'ENV') {
   statusEl.dataset.state = state;
@@ -130,8 +133,8 @@ function renderCatalog(entities) {
         <div class="muted">Carga: ${entity.carga.table} · Vinculación: ${entity.vinculacion.table}</div>
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="secondary" data-table="${entity.carga.table}" data-mode="carga">Cargar filas (carga)</button>
-        <button class="secondary" data-table="${entity.vinculacion.table}" data-mode="vinculacion">Cargar filas (vinculación)</button>
+        <button class="secondary" data-table="${entity.carga.table}" data-mode="carga">Seleccionar cuadro (carga)</button>
+        <button class="secondary" data-table="${entity.vinculacion.table}" data-mode="vinculacion">Seleccionar cuadro (vinculación)</button>
       </div>
     `;
     catalogEl.appendChild(wrapper);
@@ -141,21 +144,68 @@ function renderCatalog(entities) {
     button.addEventListener('click', async (event) => {
       const target = event.currentTarget;
       const table = target.getAttribute('data-table');
-      await loadRows(table);
+      const mode = target.getAttribute('data-mode');
+      await loadModelOptions(table, mode);
     });
   });
 }
 
-async function loadRows(table) {
+function resetModelSelector() {
+  modelSelectEl.innerHTML = '';
+  modelSelectorEl.hidden = true;
+  modelTableEl.textContent = '';
+}
+
+async function loadModelOptions(table, mode) {
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de consultar tablas.', true);
     return;
   }
 
-  const limit = Number(limitSelect.value || 25);
-  showMessage(`Consultando ${table} (límite ${limit})...`, false);
+  activeTable = table;
+  modelTableEl.textContent = `${table} (${mode})`;
+  modelSelectorEl.hidden = false;
+  modelSelectEl.disabled = true;
+  showMessage(`Buscando modelos disponibles en ${table}...`, false);
 
-  const { data, error } = await supabaseClient.from(table).select('*').limit(limit);
+  const { data, error } = await supabaseClient.from(table).select('modelo');
+
+  if (error) {
+    const friendly = mapSupabaseError(error);
+    showMessage(friendly, true);
+    resultsEl.innerHTML = `<p class="error">${friendly}</p>`;
+    modelSelectEl.disabled = false;
+    return;
+  }
+
+  const models = Array.from(
+    new Set((data || []).map((row) => row?.modelo).filter((value) => value)),
+  ).sort((a, b) => String(a).localeCompare(String(b)));
+
+  if (models.length === 0) {
+    showMessage('No se encontraron valores en la columna modelo.', true);
+    resultsEl.innerHTML = '<p class="muted">No hay modelos disponibles para filtrar.</p>';
+    modelSelectEl.disabled = false;
+    return;
+  }
+
+  modelSelectEl.innerHTML = models
+    .map((model) => `<option value="${model}">${model}</option>`)
+    .join('');
+  modelSelectEl.disabled = false;
+  showMessage(`Modelos cargados: ${models.length}. Selecciona uno para ver resultados.`, false);
+  await loadRowsForModel(table, models[0]);
+}
+
+async function loadRowsForModel(table, model) {
+  if (!supabaseClient) {
+    showMessage('Configura Supabase antes de consultar tablas.', true);
+    return;
+  }
+
+  showMessage(`Consultando ${table} para modelo "${model}"...`, false);
+
+  const { data, error } = await supabaseClient.from(table).select('*').eq('modelo', model);
 
   if (error) {
     const friendly = mapSupabaseError(error);
@@ -199,6 +249,7 @@ function init() {
     setStatus('warning', 'Sin /api/env.js', 'No se encontró configuración de entorno.', 'ENV');
     pingButton.disabled = true;
     renderCatalog([]);
+    resetModelSelector();
     return;
   }
 
@@ -216,6 +267,7 @@ function init() {
     vercelWarningEl.hidden = false;
     setStatus('warning', 'Configuración incompleta', validation.reason, 'ENV');
     pingButton.disabled = true;
+    resetModelSelector();
     return;
   }
 
@@ -235,5 +287,12 @@ function init() {
 }
 
 pingButton.addEventListener('click', pingSupabase);
+modelSelectEl.addEventListener('change', async (event) => {
+  const selectedModel = event.target.value;
+  if (!activeTable || !selectedModel) {
+    return;
+  }
+  await loadRowsForModel(activeTable, selectedModel);
+});
 
 init();

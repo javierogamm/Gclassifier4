@@ -137,6 +137,7 @@
         Frontend estático listo para Vercel con validación de entorno y ping
         real vía RPC.
       </p>
+      <p class="muted">Versión v0.3.0</p>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>
@@ -153,12 +154,9 @@
       <p id="status-detail" class="muted"></p>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <button id="ping-button">Probar conexión</button>
-        <label>
-          Límite:
-          <select id="limit-select">
-            <option value="25">25</option>
-            <option value="100">100</option>
-          </select>
+        <label id="model-selector" hidden>
+          Modelo (<span id="model-table"></span>):
+          <select id="model-select"></select>
         </label>
       </div>
       <div id="message" class="muted"></div>
