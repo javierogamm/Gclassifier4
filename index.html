@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CDC Catalog + Supabase (Vercel)</title>
+    <style>
+      :root {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        color: #0f172a;
+        background: #f8fafc;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+
+      header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 24px;
+      }
+
+      .card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+        margin-bottom: 16px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+
+      .status[data-state='ok'] {
+        color: #047857;
+      }
+
+      .status[data-state='warning'] {
+        color: #b45309;
+      }
+
+      .status[data-state='error'] {
+        color: #b91c1c;
+      }
+
+      .badge {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #e2e8f0;
+      }
+
+      button {
+        background: #1d4ed8;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #e2e8f0;
+        color: #0f172a;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .entity {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        padding: 8px;
+      }
+
+      th {
+        background: #f1f5f9;
+      }
+
+      .muted {
+        color: #64748b;
+      }
+
+      .warning {
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 16px;
+      }
+
+      .error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #b91c1c;
+        padding: 12px;
+        border-radius: 10px;
+      }
+    </style>
+    <script>
+      window.ENV = undefined;
+      window.__ENV_LOAD_FAILED__ = false;
+    </script>
+    <script src="/api/env.js" onerror="window.__ENV_LOAD_FAILED__ = true;"></script>
+  </head>
+  <body>
+    <header>
+      <h1>CDC Catalog + Supabase</h1>
+      <p class="muted">
+        Frontend estático listo para Vercel con validación de entorno y ping
+        real vía RPC.
+      </p>
+    </header>
+
+    <div id="vercel-warning" class="warning" hidden>
+      Este proyecto está diseñado para Vercel. Verifica que exista el endpoint
+      <code>/api/env.js</code> y que las variables de entorno estén configuradas.
+    </div>
+
+    <section class="card" aria-live="polite">
+      <div class="status" id="status" data-state="warning">
+        <span id="status-icon">⚠️</span>
+        <span id="status-text">Esperando configuración</span>
+        <span class="badge" id="status-badge">ENV</span>
+      </div>
+      <p id="status-detail" class="muted"></p>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button id="ping-button">Probar conexión</button>
+        <label>
+          Límite:
+          <select id="limit-select">
+            <option value="25">25</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+      </div>
+      <div id="message" class="muted"></div>
+    </section>
+
+    <section class="card">
+      <h2>Catálogo CDC</h2>
+      <div id="catalog" class="grid"></div>
+    </section>
+
+    <section class="card">
+      <h2>Resultados</h2>
+      <div id="results"></div>
+    </section>
+
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>
