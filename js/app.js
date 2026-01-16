@@ -167,7 +167,38 @@ function getSearchFilters() {
   };
 }
 
-async function fetchAllRows(table, modelFilter, searchFilters) {
+function hasSearchFilters(searchFilters) {
+  if (!searchFilters) return false;
+  return Object.values(searchFilters).some((value) => Boolean(value));
+}
+
+function normalizeFilterValue(value) {
+  if (!value) return '';
+  return String(value).trim().toLowerCase();
+}
+
+function rowMatchesField(row, fields, filterValue) {
+  if (!filterValue) return true;
+  return fields.some((field) => {
+    const raw = row?.[field];
+    if (raw === null || raw === undefined) return false;
+    return String(raw).toLowerCase().includes(filterValue);
+  });
+}
+
+function rowMatchesSearchFilters(row, normalizedFilters) {
+  return (
+    rowMatchesField(row, ['codigo_serie', 'cod', 'nombre_serie'], normalizedFilters.codigoSerie) &&
+    rowMatchesField(
+      row,
+      ['titulo_serie', 'nombre_entidad', 'nombre_serie'],
+      normalizedFilters.tituloSerie,
+    ) &&
+    rowMatchesField(row, ['categoria', 'actividad'], normalizedFilters.categoria)
+  );
+}
+
+async function fetchAllRows(table, modelFilter) {
   const batchSize = 1000;
   let from = 0;
   let allRows = [];
@@ -181,16 +212,6 @@ async function fetchAllRows(table, modelFilter, searchFilters) {
       } else {
         query = query.eq('modelo', modelFilter.value);
       }
-    }
-
-    if (searchFilters?.codigoSerie) {
-      query = query.ilike('codigo_serie', `%${searchFilters.codigoSerie}%`);
-    }
-    if (searchFilters?.tituloSerie) {
-      query = query.ilike('titulo_serie', `%${searchFilters.tituloSerie}%`);
-    }
-    if (searchFilters?.categoria) {
-      query = query.ilike('categoria', `%${searchFilters.categoria}%`);
     }
 
     const { data, error } = await query;
@@ -258,7 +279,7 @@ async function loadRows(table, modelFilter = null) {
   activeTable = table;
   activeModelFilter = modelFilter;
 
-  const { data, error } = await fetchAllRows(table, modelFilter, searchFilters);
+  const { data, error } = await fetchAllRows(table, modelFilter);
 
   if (error) {
     const friendly = mapSupabaseError(error);
@@ -267,8 +288,9 @@ async function loadRows(table, modelFilter = null) {
     return;
   }
 
-  renderResults(data || []);
-  showMessage(`Resultados cargados: ${data?.length || 0} filas.`, false);
+  const filteredRows = filterRowsWithHierarchy(data || [], searchFilters);
+  renderResults(filteredRows);
+  showMessage(`Resultados cargados: ${filteredRows.length} filas.`, false);
 }
 
 function getRowIdentity(row, fallback) {
@@ -312,6 +334,40 @@ function buildHierarchy(rows) {
   });
 
   return roots;
+}
+
+function filterRowsWithHierarchy(rows, searchFilters) {
+  if (!hasSearchFilters(searchFilters)) {
+    return rows;
+  }
+
+  const normalizedFilters = {
+    codigoSerie: normalizeFilterValue(searchFilters.codigoSerie),
+    tituloSerie: normalizeFilterValue(searchFilters.tituloSerie),
+    categoria: normalizeFilterValue(searchFilters.categoria),
+  };
+
+  const roots = buildHierarchy(rows);
+  const includedIdentities = new Set();
+
+  const includeNodeAndDescendants = (node) => {
+    includedIdentities.add(node.identity);
+    node.children.forEach((child) => includeNodeAndDescendants(child));
+  };
+
+  const visitNode = (node) => {
+    if (rowMatchesSearchFilters(node.row, normalizedFilters)) {
+      includeNodeAndDescendants(node);
+      return;
+    }
+    node.children.forEach((child) => visitNode(child));
+  };
+
+  roots.forEach((root) => visitNode(root));
+
+  return (rows || []).filter((row, index) =>
+    includedIdentities.has(getRowIdentity(row, `row-${index + 1}`)),
+  );
 }
 
 function createHierarchyDetails(node) {
