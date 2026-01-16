@@ -203,6 +203,15 @@
         gap: 12px;
       }
 
+      .results-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+
       .results-list {
         display: grid;
         gap: 12px;
@@ -235,6 +244,22 @@
         gap: 4px;
       }
 
+      .result-title {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .hierarchy-number {
+        font-weight: 700;
+        color: #1e40af;
+        background: #dbeafe;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 12px;
+      }
+
       .result-meta {
         font-size: 13px;
         color: #64748b;
@@ -263,6 +288,11 @@
 
       .result-item.series .result-body {
         background: #ffffff;
+      }
+
+      .detail-button {
+        background: #0f172a;
+        color: #ffffff;
       }
 
       .child-list {
@@ -340,6 +370,46 @@
         gap: 8px;
         flex-wrap: wrap;
       }
+
+      .form-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .form-grid label {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .form-grid input,
+      .form-grid select {
+        border-radius: 8px;
+        border: 1px solid #cbd5f5;
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
+      .form-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .form-status {
+        font-size: 13px;
+        color: #64748b;
+      }
+
+      .inline-input {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
     </style>
     <script src="/api/env.js"></script>
   </head>
@@ -351,7 +421,7 @@
           Frontend estático listo para Vercel con validación de entorno y ping
           real vía RPC.
         </p>
-        <p class="muted"><strong>Versión:</strong> v0.9.0</p>
+        <p class="muted"><strong>Versión:</strong> v0.10.0</p>
       </div>
       <div class="header-status" aria-live="polite">
         <div class="status" id="status" data-state="warning">
@@ -377,7 +447,10 @@
     </section>
 
     <section class="card">
-      <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
+      <div class="results-header">
+        <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
+        <button id="open-create-modal" type="button">Crear elemento</button>
+      </div>
       <form id="filter-form" class="filters">
         <label>
           Buscar código_serie
@@ -407,6 +480,66 @@
         </div>
         <p id="model-modal-message" class="muted"></p>
         <div id="model-list" class="modal-grid"></div>
+      </div>
+    </div>
+
+    <div id="create-modal" class="modal" hidden>
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
+        <div class="modal-header">
+          <h3 id="create-modal-title">Crear nuevo elemento</h3>
+          <button id="create-modal-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <form id="create-form" class="form-grid">
+          <label>
+            Código de serie
+            <input id="create-codigo-serie" name="codigo_serie" type="text" required />
+          </label>
+          <label>
+            Título de serie
+            <input id="create-titulo-serie" name="titulo_serie" type="text" required />
+          </label>
+          <label>
+            Categoría
+            <select id="create-categoria" name="categoria"></select>
+          </label>
+          <label>
+            Posición
+            <div class="inline-input">
+              <input
+                id="create-posicion"
+                name="posicion"
+                type="text"
+                placeholder="Raíz"
+                readonly
+              />
+              <button id="create-posicion-search" class="secondary" type="button">
+                Buscar
+              </button>
+            </div>
+          </label>
+          <div class="form-actions">
+            <span id="create-status" class="form-status"></span>
+            <div>
+              <button id="create-submit" type="submit">Crear elemento</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="position-modal" class="modal" hidden>
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="position-modal-title">
+        <div class="modal-header">
+          <h3 id="position-modal-title">Selecciona una posición</h3>
+          <button id="position-modal-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <div class="form-grid">
+          <label>
+            Buscar código de serie
+            <input id="position-search" type="search" placeholder="Ej: SER-001" />
+          </label>
+        </div>
+        <div id="position-list" class="modal-grid"></div>
       </div>
     </div>
 

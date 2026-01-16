@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.10.0
+
+- Se ordenaron siempre los elementos raíz por `codigo_serie` y se añadió numeración jerárquica visible.
+- Se incorporó un modal para crear nuevos elementos con selección de categoría disponible y búsqueda de posición en la jerarquía.
+- Se ajustó el estilo del botón de detalles para mejorar el contraste en cada barra.
+- Se actualizó la versión visible de la app.
+
 ## v0.9.0
 
 - Se movió el estado de conexión al encabezado derecho y se eliminó la tarjeta dedicada.
