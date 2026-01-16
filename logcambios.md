@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.9.0
+
+- Se ordenaron los elementos raíz por `codigo_serie` y se numeraron jerárquicamente en la vista.
+- Se añadió un botón para crear nuevos elementos con guardado directo en Supabase.
+- Se actualizó la versión visible de la app.
+
 ## v0.8.0
 
 - Se agregó un botón de guardar en la ficha de detalles para confirmar la edición antes de persistir.

@@ -22,6 +22,7 @@ const filterCodigoSerieEl = document.getElementById('filter-codigo-serie');
 const filterTituloSerieEl = document.getElementById('filter-titulo-serie');
 const filterCategoriaEl = document.getElementById('filter-categoria');
 const clearFiltersButton = document.getElementById('clear-filters');
+const addItemButton = document.getElementById('add-item');
 const detailDrawerEl = document.getElementById('detail-drawer');
 const detailDrawerTitleEl = document.getElementById('detail-drawer-title');
 const detailDrawerBodyEl = document.getElementById('detail-drawer-body');
@@ -320,6 +321,11 @@ function getParentIdentity(row) {
   return value === '' ? null : value;
 }
 
+function getCodigoSerieForSort(row) {
+  const raw = row?.codigo_serie ?? row?.cod ?? row?.nombre_serie ?? '';
+  return String(raw ?? '').trim();
+}
+
 function buildHierarchy(rows) {
   const nodes = (rows || []).map((row, index) => ({
     identity: getRowIdentity(row, `row-${index + 1}`),
@@ -347,6 +353,26 @@ function buildHierarchy(rows) {
   });
 
   return roots;
+}
+
+function sortHierarchyByCodigoSerie(nodes) {
+  const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+  nodes.sort((a, b) => collator.compare(getCodigoSerieForSort(a.row), getCodigoSerieForSort(b.row)));
+  nodes.forEach((node) => {
+    if (node.children && node.children.length > 0) {
+      sortHierarchyByCodigoSerie(node.children);
+    }
+  });
+}
+
+function assignHierarchyNumbers(nodes, prefix = '') {
+  nodes.forEach((node, index) => {
+    const currentNumber = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
+    node.hierarchyNumber = currentNumber;
+    if (node.children && node.children.length > 0) {
+      assignHierarchyNumbers(node.children, currentNumber);
+    }
+  });
 }
 
 function filterRowsWithHierarchy(rows, searchFilters) {
@@ -395,7 +421,10 @@ function createHierarchyDetails(node) {
   const summary = document.createElement('summary');
   summary.innerHTML = `
     <div class="result-summary">
-      <strong>${tituloSerie}</strong>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <span class="hierarchy-number">${node.hierarchyNumber || '—'}</span>
+        <strong>${tituloSerie}</strong>
+      </div>
       <div class="result-meta">
         <span><strong>Código:</strong> ${codigoSerie}</span>
         <span><strong>Categoría:</strong> ${categoria}</span>
@@ -437,6 +466,8 @@ function renderResults(rows) {
   }
 
   const roots = buildHierarchy(rows);
+  sortHierarchyByCodigoSerie(roots);
+  assignHierarchyNumbers(roots);
   if (roots.length === 0) {
     resultsEl.innerHTML = '<p class="muted">No hay filas raíz para mostrar.</p>';
     return;
@@ -543,6 +574,7 @@ async function openDetailDrawer(row, title) {
   detailDrawerBodyEl.innerHTML = '';
   updateDetailStatus('Edita los campos y guarda los cambios para confirmar.', false);
   detailDrawerSaveEl.disabled = false;
+  detailDrawerEl.dataset.mode = 'edit';
 
   const codigoSerie = row?.codigo_serie ?? row?.cod ?? '';
   detailDrawerEl.dataset.codigoSerie = codigoSerie;
@@ -589,6 +621,50 @@ async function openDetailDrawer(row, title) {
   detailDrawerEl.hidden = false;
 }
 
+function openCreateDrawer() {
+  if (!activeTable) {
+    showMessage('Selecciona un cuadro del catálogo antes de añadir.', true);
+    return;
+  }
+
+  detailDrawerTitleEl.textContent = 'Nuevo elemento';
+  detailDrawerBodyEl.innerHTML = '';
+  updateDetailStatus('Completa los campos y guarda para crear el registro.', false);
+  detailDrawerSaveEl.disabled = false;
+  detailDrawerEl.dataset.mode = 'create';
+  detailDrawerEl.dataset.identityField = '';
+  detailDrawerEl.dataset.identityValue = '';
+  detailDrawerEl.dataset.codigoSerie = '';
+
+  const fields = [
+    { key: 'posicion', label: 'posicion', value: '' },
+    { key: 'codigo_serie', label: 'codigo_serie', value: '' },
+    { key: 'titulo_serie', label: 'titulo_serie', value: '' },
+    { key: 'categoria', label: 'categoria', value: '' },
+    { key: 'actividad', label: 'actividad', value: '' },
+  ];
+
+  fields.forEach(({ key, label, value }) => {
+    const item = document.createElement('label');
+    item.className = 'detail-item';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'detail-label';
+    labelEl.textContent = label;
+    const input = document.createElement('input');
+    input.className = 'detail-input';
+    input.type = 'text';
+    input.name = key;
+    input.value = value;
+    input.placeholder = '—';
+    input.dataset.original = '';
+    item.appendChild(labelEl);
+    item.appendChild(input);
+    detailDrawerBodyEl.appendChild(item);
+  });
+
+  detailDrawerEl.hidden = false;
+}
+
 function closeDetailDrawer() {
   detailDrawerEl.hidden = true;
 }
@@ -603,9 +679,10 @@ async function saveDetailChanges() {
     return;
   }
 
+  const mode = detailDrawerEl.dataset.mode || 'edit';
   const identityField = detailDrawerEl.dataset.identityField;
   const identityValue = detailDrawerEl.dataset.identityValue;
-  if (!identityField) {
+  if (mode !== 'create' && !identityField) {
     updateDetailStatus('No se pudo identificar el registro para guardar.', true);
     return;
   }
@@ -633,19 +710,30 @@ async function saveDetailChanges() {
 
   const hasMainUpdates = Object.keys(updates).length > 0;
   const vinculacionTable = getVinculacionTableForActive();
-  const codigoSerie = detailDrawerEl.dataset.codigoSerie;
+  const codigoSerie =
+    mode === 'create' ? normalizeInputValue(updates.codigo_serie) : detailDrawerEl.dataset.codigoSerie;
   const shouldUpdateActividad = actividadChanged && vinculacionTable && codigoSerie;
 
-  if (!hasMainUpdates && !shouldUpdateActividad) {
+  if (mode !== 'create' && !hasMainUpdates && !shouldUpdateActividad) {
     updateDetailStatus('No hay cambios para guardar.', false);
     return;
   }
 
   detailDrawerSaveEl.disabled = true;
-  updateDetailStatus('Guardando cambios...', false);
+  updateDetailStatus(mode === 'create' ? 'Creando registro...' : 'Guardando cambios...', false);
 
   try {
-    if (hasMainUpdates) {
+    if (mode === 'create') {
+      if (!hasMainUpdates) {
+        updateDetailStatus('Completa al menos un campo antes de guardar.', true);
+        detailDrawerSaveEl.disabled = false;
+        return;
+      }
+      const { error } = await supabaseClient.from(activeTable).insert(updates);
+      if (error) {
+        throw error;
+      }
+    } else if (hasMainUpdates) {
       const { error } = await supabaseClient
         .from(activeTable)
         .update(updates)
@@ -656,12 +744,21 @@ async function saveDetailChanges() {
     }
 
     if (shouldUpdateActividad) {
-      const { error } = await supabaseClient
-        .from(vinculacionTable)
-        .update({ actividad: actividadUpdate })
-        .eq('cod', codigoSerie);
-      if (error) {
-        throw error;
+      if (mode === 'create') {
+        const { error } = await supabaseClient
+          .from(vinculacionTable)
+          .upsert({ cod: codigoSerie, actividad: actividadUpdate }, { onConflict: 'cod' });
+        if (error) {
+          throw error;
+        }
+      } else {
+        const { error } = await supabaseClient
+          .from(vinculacionTable)
+          .update({ actividad: actividadUpdate })
+          .eq('cod', codigoSerie);
+        if (error) {
+          throw error;
+        }
       }
     }
 
@@ -669,7 +766,10 @@ async function saveDetailChanges() {
       input.dataset.original = input.value;
     });
 
-    updateDetailStatus('Cambios guardados en Supabase.', false);
+    updateDetailStatus(
+      mode === 'create' ? 'Registro creado en Supabase.' : 'Cambios guardados en Supabase.',
+      false,
+    );
     if (activeTable) {
       await loadRows(activeTable, activeModelFilter);
     }
@@ -766,6 +866,10 @@ clearFiltersButton.addEventListener('click', async () => {
   } else {
     showMessage('Filtros limpiados. Selecciona un cuadro para ver resultados.', false);
   }
+});
+
+addItemButton.addEventListener('click', () => {
+  openCreateDrawer();
 });
 
 init();
