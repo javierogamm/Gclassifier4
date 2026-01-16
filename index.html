@@ -248,7 +248,8 @@
         position: fixed;
         inset: 0;
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
+        align-items: center;
         background: rgba(15, 23, 42, 0.45);
         padding: 24px;
       }
@@ -260,9 +261,9 @@
       .drawer-content {
         background: #ffffff;
         border-radius: 16px;
-        padding: 20px;
-        width: min(480px, 100%);
-        max-height: 100%;
+        padding: 24px;
+        width: min(900px, 100%);
+        max-height: min(90vh, 100%);
         overflow: auto;
         box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
         display: grid;
@@ -280,11 +281,18 @@
         font-size: 14px;
       }
 
-      .detail-item strong {
+      .detail-label {
         font-size: 13px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
         color: #64748b;
+      }
+
+      .detail-input {
+        border-radius: 8px;
+        border: 1px solid #cbd5f5;
+        padding: 8px 10px;
+        font-size: 14px;
       }
     </style>
     <script src="/api/env.js"></script>
@@ -296,7 +304,7 @@
         Frontend estático listo para Vercel con validación de entorno y ping
         real vía RPC.
       </p>
-      <p class="muted"><strong>Versión:</strong> v0.5.0</p>
+      <p class="muted"><strong>Versión:</strong> v0.6.0</p>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>

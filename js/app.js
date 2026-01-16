@@ -43,6 +43,30 @@ let pendingModelTable = null;
 let activeTable = null;
 let activeModelFilter = null;
 
+function getVinculacionTableForActive() {
+  if (!activeCatalog?.entities || !activeTable) return null;
+  const entity = activeCatalog.entities.find((item) => item?.carga?.table === activeTable);
+  return entity?.vinculacion?.table ?? null;
+}
+
+async function fetchActividadForCodigoSerie(codigoSerie) {
+  if (!supabaseClient || !codigoSerie) return null;
+  const vinculacionTable = getVinculacionTableForActive();
+  if (!vinculacionTable) return null;
+
+  const { data, error } = await supabaseClient
+    .from(vinculacionTable)
+    .select('actividad')
+    .eq('cod', codigoSerie)
+    .limit(1);
+
+  if (error) {
+    return null;
+  }
+
+  return data?.[0]?.actividad ?? null;
+}
+
 function setStatus(state, text, detail, badge = 'ENV') {
   statusEl.dataset.state = state;
   statusIconEl.textContent = state === 'ok' ? '✅' : state === 'error' ? '❌' : '⚠️';
@@ -445,25 +469,34 @@ async function openModelModal(table, label) {
   });
 }
 
-function openDetailDrawer(row, title) {
+async function openDetailDrawer(row, title) {
   detailDrawerTitleEl.textContent = title || 'Detalles del registro';
   detailDrawerBodyEl.innerHTML = '';
 
-  Object.entries(row || {}).forEach(([key, value]) => {
-    const item = document.createElement('div');
+  const codigoSerie = row?.codigo_serie ?? row?.cod ?? '';
+  const actividad = await fetchActividadForCodigoSerie(codigoSerie);
+  const fields = [
+    { key: 'posicion', label: 'posicion', value: row?.posicion },
+    { key: 'codigo_serie', label: 'codigo_serie', value: codigoSerie },
+    { key: 'titulo_serie', label: 'titulo_serie', value: row?.titulo_serie },
+    { key: 'categoria', label: 'categoria', value: row?.categoria },
+    { key: 'actividad', label: 'actividad', value: actividad },
+  ];
+
+  fields.forEach(({ key, label, value }) => {
+    const item = document.createElement('label');
     item.className = 'detail-item';
-    const label = document.createElement('strong');
-    label.textContent = key;
-    const valueEl = document.createElement('span');
-    if (value === null || value === undefined || value === '') {
-      valueEl.textContent = '—';
-    } else if (typeof value === 'object') {
-      valueEl.textContent = JSON.stringify(value);
-    } else {
-      valueEl.textContent = String(value);
-    }
-    item.appendChild(label);
-    item.appendChild(valueEl);
+    const labelEl = document.createElement('span');
+    labelEl.className = 'detail-label';
+    labelEl.textContent = label;
+    const input = document.createElement('input');
+    input.className = 'detail-input';
+    input.type = 'text';
+    input.name = key;
+    input.value = value === null || value === undefined ? '' : String(value);
+    input.placeholder = '—';
+    item.appendChild(labelEl);
+    item.appendChild(input);
     detailDrawerBodyEl.appendChild(item);
   });
 
