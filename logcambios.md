@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.5.0
+
+- Se corrigió el acordeón para mostrar solo los elementos raíz (posicion vacía) y revelar los hijos inmediatos al expandir cada registro.
+- Se ajustó la versión visible de la app.
+
 ## v0.4.0
 
 - Se eliminó el límite fijo de carga y se añadió paginación automática para traer todas las filas desde Supabase.

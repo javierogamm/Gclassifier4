@@ -247,49 +247,94 @@ async function loadRows(table, modelFilter = null) {
   showMessage(`Resultados cargados: ${data?.length || 0} filas.`, false);
 }
 
-function normalizeElementList(rawValue) {
-  if (!rawValue) return [];
-  if (Array.isArray(rawValue)) return rawValue;
-  if (typeof rawValue === 'string') {
-    try {
-      const parsed = JSON.parse(rawValue);
-      if (Array.isArray(parsed)) return parsed;
-    } catch (error) {
-      return [];
-    }
-  }
-  return [];
+function getRowIdentity(row, fallback) {
+  const raw =
+    row?.nombre_serie ?? row?.codigo_serie ?? row?.cod ?? row?.id ?? row?.nombre_entidad ?? fallback;
+  if (raw === null || raw === undefined || raw === '') return fallback;
+  return String(raw).trim();
 }
 
-function extractChildElements(row) {
-  const preferredKeys = ['elementos', 'items', 'children', 'subseries', 'series_hijas'];
-  const elements = [];
+function getParentIdentity(row) {
+  const raw = row?.posicion;
+  if (raw === null || raw === undefined) return null;
+  const value = String(raw).trim();
+  return value === '' ? null : value;
+}
 
-  preferredKeys.forEach((key) => {
-    if (row && key in row) {
-      const parsed = normalizeElementList(row[key]);
-      if (parsed.length) {
-        elements.push({ key, values: parsed });
-      }
+function buildHierarchy(rows) {
+  const nodes = (rows || []).map((row, index) => ({
+    identity: getRowIdentity(row, `row-${index + 1}`),
+    row,
+    children: [],
+  }));
+
+  const identityMap = new Map();
+  nodes.forEach((node) => {
+    if (!identityMap.has(node.identity)) {
+      identityMap.set(node.identity, node);
     }
   });
 
-  Object.entries(row || {}).forEach(([key, value]) => {
-    if (preferredKeys.includes(key)) return;
-    if (Array.isArray(value)) {
-      elements.push({ key, values: value });
+  const roots = [];
+  nodes.forEach((node) => {
+    const parentIdentity = getParentIdentity(node.row);
+    const parentNode =
+      parentIdentity && identityMap.has(parentIdentity) ? identityMap.get(parentIdentity) : null;
+    if (parentNode && parentNode !== node) {
+      parentNode.children.push(node);
+    } else {
+      roots.push(node);
     }
   });
 
-  return elements;
+  return roots;
 }
 
-function formatElementValue(value) {
-  if (value === null || value === undefined) return '—';
-  if (typeof value === 'object') {
-    return JSON.stringify(value);
+function createHierarchyDetails(node) {
+  const { row } = node;
+  const codigoSerie = row?.nombre_serie || row?.codigo_serie || row?.cod || '—';
+  const tituloSerie =
+    row?.titulo_serie || row?.nombre_entidad || row?.nombre_serie || 'Registro sin título';
+  const categoria = row?.categoria || row?.actividad || '—';
+
+  const details = document.createElement('details');
+  details.className = 'result-item';
+  const summary = document.createElement('summary');
+  summary.innerHTML = `
+    <div class="result-summary">
+      <strong>${tituloSerie}</strong>
+      <div class="result-meta">
+        <span><strong>Código:</strong> ${codigoSerie}</span>
+        <span><strong>Categoría:</strong> ${categoria}</span>
+      </div>
+    </div>
+    <button type="button" class="secondary">Ver detalles</button>
+  `;
+
+  const detailButton = summary.querySelector('button');
+  detailButton.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openDetailDrawer(row, tituloSerie);
+  });
+
+  const body = document.createElement('div');
+  body.className = 'result-body';
+  if (!node.children || node.children.length === 0) {
+    body.innerHTML = '<p class="muted">Sin elementos asociados.</p>';
+  } else {
+    const childWrapper = document.createElement('div');
+    childWrapper.className = 'child-list';
+    node.children.forEach((childNode) => {
+      childWrapper.appendChild(createHierarchyDetails(childNode));
+    });
+    body.appendChild(childWrapper);
   }
-  return String(value);
+
+  details.appendChild(summary);
+  details.appendChild(body);
+
+  return details;
 }
 
 function renderResults(rows) {
@@ -298,61 +343,17 @@ function renderResults(rows) {
     return;
   }
 
+  const roots = buildHierarchy(rows);
+  if (roots.length === 0) {
+    resultsEl.innerHTML = '<p class="muted">No hay filas raíz para mostrar.</p>';
+    return;
+  }
+
   const list = document.createElement('div');
   list.className = 'results-list';
 
-  rows.forEach((row, index) => {
-    const codigoSerie = row.codigo_serie || row.cod || '—';
-    const tituloSerie = row.titulo_serie || row.nombre_entidad || `Registro ${index + 1}`;
-    const categoria = row.categoria || row.actividad || '—';
-    const elementos = extractChildElements(row);
-
-    const details = document.createElement('details');
-    details.className = 'result-item';
-    const summary = document.createElement('summary');
-    summary.innerHTML = `
-      <div class="result-summary">
-        <strong>${tituloSerie}</strong>
-        <div class="result-meta">
-          <span><strong>Código:</strong> ${codigoSerie}</span>
-          <span><strong>Categoría:</strong> ${categoria}</span>
-        </div>
-      </div>
-      <button type="button" class="secondary">Ver detalles</button>
-    `;
-
-    const body = document.createElement('div');
-    body.className = 'result-body';
-    if (elementos.length === 0) {
-      body.innerHTML = '<p class="muted">Sin elementos asociados.</p>';
-    } else {
-      const childWrapper = document.createElement('div');
-      childWrapper.className = 'child-list';
-      elementos.forEach((group) => {
-        const title = document.createElement('strong');
-        title.textContent = group.key;
-        const listEl = document.createElement('ul');
-        group.values.forEach((item) => {
-          const li = document.createElement('li');
-          li.textContent = formatElementValue(item);
-          listEl.appendChild(li);
-        });
-        childWrapper.appendChild(title);
-        childWrapper.appendChild(listEl);
-      });
-      body.appendChild(childWrapper);
-    }
-
-    const detailButton = summary.querySelector('button');
-    detailButton.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      openDetailDrawer(row, tituloSerie);
-    });
-
-    details.appendChild(summary);
-    details.appendChild(body);
-    list.appendChild(details);
+  roots.forEach((node) => {
+    list.appendChild(createHierarchyDetails(node));
   });
 
   resultsEl.innerHTML = '';
