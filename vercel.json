@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/env.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/env.js", "dest": "/api/env.js" },
+    { "src": "/js/(.*)", "dest": "/js/$1" },
+    { "src": "/supabase/(.*)", "dest": "/supabase/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
