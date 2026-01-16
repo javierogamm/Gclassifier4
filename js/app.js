@@ -23,6 +23,21 @@ const filterTituloSerieEl = document.getElementById('filter-titulo-serie');
 const filterCategoriaEl = document.getElementById('filter-categoria');
 const clearFiltersButton = document.getElementById('clear-filters');
 const resultsTitleEl = document.getElementById('results-title');
+const openCreateModalButton = document.getElementById('open-create-modal');
+const createModalEl = document.getElementById('create-modal');
+const createModalCloseEl = document.getElementById('create-modal-close');
+const createFormEl = document.getElementById('create-form');
+const createCodigoSerieEl = document.getElementById('create-codigo-serie');
+const createTituloSerieEl = document.getElementById('create-titulo-serie');
+const createCategoriaEl = document.getElementById('create-categoria');
+const createPosicionEl = document.getElementById('create-posicion');
+const createPosicionSearchEl = document.getElementById('create-posicion-search');
+const createStatusEl = document.getElementById('create-status');
+const createSubmitButton = document.getElementById('create-submit');
+const positionModalEl = document.getElementById('position-modal');
+const positionModalCloseEl = document.getElementById('position-modal-close');
+const positionSearchEl = document.getElementById('position-search');
+const positionListEl = document.getElementById('position-list');
 const detailDrawerEl = document.getElementById('detail-drawer');
 const detailDrawerTitleEl = document.getElementById('detail-drawer-title');
 const detailDrawerBodyEl = document.getElementById('detail-drawer-body');
@@ -45,6 +60,7 @@ let activeCatalog = null;
 let pendingModelTable = null;
 let activeTable = null;
 let activeModelFilter = null;
+let activeRows = [];
 
 function getVinculacionTableForActive() {
   if (!activeCatalog?.entities || !activeTable) return null;
@@ -308,7 +324,10 @@ async function loadRows(table, modelFilter = null) {
     return;
   }
 
-  const filteredRows = filterRowsWithHierarchy(data || [], searchFilters);
+  const allRows = data || [];
+  activeRows = allRows;
+  refreshCreateOptions();
+  const filteredRows = filterRowsWithHierarchy(allRows, searchFilters);
   renderResults(filteredRows);
   updateResultsTitle(modelFilter, filteredRows.length);
   showMessage(`Resultados cargados: ${filteredRows.length} filas.`, false);
@@ -326,6 +345,20 @@ function getParentIdentity(row) {
   if (raw === null || raw === undefined) return null;
   const value = String(raw).trim();
   return value === '' ? null : value;
+}
+
+function getCodigoSerieValue(row, fallback = '') {
+  const raw = row?.codigo_serie ?? row?.cod ?? row?.nombre_serie ?? fallback;
+  return raw === null || raw === undefined ? fallback : String(raw).trim();
+}
+
+function sortNodesByCodigoSerie(nodes) {
+  return [...nodes].sort((a, b) =>
+    getCodigoSerieValue(a.row).localeCompare(getCodigoSerieValue(b.row), 'es', {
+      sensitivity: 'base',
+      numeric: true,
+    }),
+  );
 }
 
 function buildHierarchy(rows) {
@@ -354,7 +387,7 @@ function buildHierarchy(rows) {
     }
   });
 
-  return roots;
+  return sortNodesByCodigoSerie(roots);
 }
 
 function filterRowsWithHierarchy(rows, searchFilters) {
@@ -404,26 +437,32 @@ function getToneForCategoria(categoria, depth) {
   return depth === 0 ? 'section' : 'series';
 }
 
-function createHierarchyDetails(node, depth = 0) {
+function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
   const { row } = node;
   const codigoSerie = row?.nombre_serie || row?.codigo_serie || row?.cod || '—';
   const tituloSerie =
     row?.titulo_serie || row?.nombre_entidad || row?.nombre_serie || 'Registro sin título';
   const categoria = row?.categoria || row?.actividad || '—';
   const toneClass = getToneForCategoria(categoria, depth);
+  const hierarchyMarkup = hierarchyLabel
+    ? `<span class="hierarchy-number">${hierarchyLabel}</span>`
+    : '';
 
   const details = document.createElement('details');
   details.className = `result-item ${toneClass}`;
   const summary = document.createElement('summary');
   summary.innerHTML = `
     <div class="result-summary">
-      <strong>${tituloSerie}</strong>
+      <div class="result-title">
+        ${hierarchyMarkup}
+        <strong>${tituloSerie}</strong>
+      </div>
       <div class="result-meta">
         <span><strong>Código:</strong> ${codigoSerie}</span>
         <span><strong>Categoría:</strong> ${categoria}</span>
       </div>
     </div>
-    <button type="button" class="secondary">Ver detalles</button>
+    <button type="button" class="detail-button">Ver detalles</button>
   `;
 
   const detailButton = summary.querySelector('button');
@@ -440,8 +479,9 @@ function createHierarchyDetails(node, depth = 0) {
   } else {
     const childWrapper = document.createElement('div');
     childWrapper.className = 'child-list';
-    node.children.forEach((childNode) => {
-      childWrapper.appendChild(createHierarchyDetails(childNode, depth + 1));
+    node.children.forEach((childNode, index) => {
+      const childLabel = hierarchyLabel ? `${hierarchyLabel}.${index + 1}` : `${index + 1}`;
+      childWrapper.appendChild(createHierarchyDetails(childNode, depth + 1, childLabel));
     });
     body.appendChild(childWrapper);
   }
@@ -467,8 +507,9 @@ function renderResults(rows) {
   const list = document.createElement('div');
   list.className = 'results-list';
 
-  roots.forEach((node) => {
-    list.appendChild(createHierarchyDetails(node, 0));
+  roots.forEach((node, index) => {
+    const hierarchyLabel = `${index + 1}`;
+    list.appendChild(createHierarchyDetails(node, 0, hierarchyLabel));
   });
 
   resultsEl.innerHTML = '';
@@ -483,6 +524,172 @@ function updateResultsTitle(modelFilter, count) {
       : modelFilter.label || modelFilter.value
     : 'Todos';
   resultsTitleEl.textContent = `Modelo: ${modelLabel} · Elementos cargados: ${count}`;
+}
+
+function setCreateStatus(message, isError = false) {
+  if (!createStatusEl) return;
+  createStatusEl.textContent = message || '';
+  createStatusEl.className = isError ? 'form-status error' : 'form-status';
+}
+
+function getUniqueCategorias(rows) {
+  const categories = new Set();
+  (rows || []).forEach((row) => {
+    const raw = row?.categoria;
+    if (raw === null || raw === undefined) return;
+    const value = String(raw).trim();
+    if (value) {
+      categories.add(value);
+    }
+  });
+  return Array.from(categories).sort((a, b) =>
+    a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true }),
+  );
+}
+
+function refreshCreateOptions() {
+  if (!createCategoriaEl) return;
+  const categories = getUniqueCategorias(activeRows);
+  createCategoriaEl.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent =
+    categories.length === 0 ? 'Sin categorías disponibles' : 'Selecciona una categoría';
+  createCategoriaEl.appendChild(placeholder);
+  categories.forEach((categoria) => {
+    const option = document.createElement('option');
+    option.value = categoria;
+    option.textContent = categoria;
+    createCategoriaEl.appendChild(option);
+  });
+}
+
+function openCreateModal() {
+  if (!activeTable) {
+    showMessage('Selecciona un cuadro del catálogo antes de crear un elemento.', true);
+    return;
+  }
+  setCreateStatus('', false);
+  createCodigoSerieEl.value = '';
+  createTituloSerieEl.value = '';
+  createCategoriaEl.value = '';
+  setPositionValue('', 'Raíz');
+  createModalEl.hidden = false;
+}
+
+function closeCreateModal() {
+  createModalEl.hidden = true;
+}
+
+function setPositionValue(value, label) {
+  const normalizedValue = value ? String(value).trim() : '';
+  createPosicionEl.dataset.value = normalizedValue;
+  createPosicionEl.value = label || normalizedValue;
+  if (!normalizedValue) {
+    createPosicionEl.value = '';
+    createPosicionEl.placeholder = 'Raíz';
+  } else {
+    createPosicionEl.placeholder = '';
+  }
+}
+
+function renderPositionOptions(searchTerm = '') {
+  if (!positionListEl) return;
+  const normalized = normalizeFilterValue(searchTerm);
+  const options = new Map();
+  (activeRows || []).forEach((row) => {
+    const code = getCodigoSerieValue(row);
+    if (!code) return;
+    if (!options.has(code)) {
+      options.set(code, { value: code, label: code });
+    }
+  });
+  const filteredOptions = Array.from(options.values()).filter((option) =>
+    option.label.toLowerCase().includes(normalized),
+  );
+  filteredOptions.sort((a, b) =>
+    a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true }),
+  );
+  const shouldShowRoot =
+    normalized === '' || 'raíz'.includes(normalized) || 'raiz'.includes(normalized);
+  const rootOption = shouldShowRoot ? [{ value: '', label: 'Raíz' }] : [];
+  const finalOptions = [...rootOption, ...filteredOptions];
+  positionListEl.innerHTML = '';
+  if (finalOptions.length === 0) {
+    positionListEl.innerHTML = '<p class="muted">No hay resultados.</p>';
+    return;
+  }
+  finalOptions.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary';
+    button.textContent = option.label;
+    button.addEventListener('click', () => {
+      setPositionValue(option.value, option.label);
+      closePositionModal();
+    });
+    positionListEl.appendChild(button);
+  });
+}
+
+function openPositionModal() {
+  positionSearchEl.value = '';
+  renderPositionOptions('');
+  positionModalEl.hidden = false;
+}
+
+function closePositionModal() {
+  positionModalEl.hidden = true;
+}
+
+async function handleCreateSubmit(event) {
+  event.preventDefault();
+  if (!supabaseClient) {
+    setCreateStatus('Configura Supabase antes de crear.', true);
+    return;
+  }
+  if (!activeTable) {
+    setCreateStatus('Selecciona un cuadro antes de crear.', true);
+    return;
+  }
+
+  const codigoSerie = normalizeInputValue(createCodigoSerieEl.value);
+  const tituloSerie = normalizeInputValue(createTituloSerieEl.value);
+  if (!codigoSerie || !tituloSerie) {
+    setCreateStatus('Completa código y título antes de crear.', true);
+    return;
+  }
+
+  const categoria = normalizeInputValue(createCategoriaEl.value);
+  const posicion = normalizeInputValue(createPosicionEl.dataset.value ?? '');
+
+  const payload = {
+    codigo_serie: codigoSerie,
+    titulo_serie: tituloSerie,
+  };
+  if (categoria !== null) {
+    payload.categoria = categoria;
+  }
+  if (posicion !== null) {
+    payload.posicion = posicion;
+  }
+
+  createSubmitButton.disabled = true;
+  setCreateStatus('Creando elemento...', false);
+
+  const { error } = await supabaseClient.from(activeTable).insert([payload]);
+  if (error) {
+    setCreateStatus(mapSupabaseError(error), true);
+    createSubmitButton.disabled = false;
+    return;
+  }
+
+  setCreateStatus('Elemento creado correctamente.', false);
+  createSubmitButton.disabled = false;
+  closeCreateModal();
+  if (activeTable) {
+    await loadRows(activeTable, activeModelFilter);
+  }
 }
 
 function closeModelModal() {
@@ -759,6 +966,14 @@ function init() {
 
 pingButton.addEventListener('click', pingSupabase);
 modelModalCloseEl.addEventListener('click', closeModelModal);
+openCreateModalButton.addEventListener('click', openCreateModal);
+createModalCloseEl.addEventListener('click', closeCreateModal);
+createPosicionSearchEl.addEventListener('click', openPositionModal);
+positionModalCloseEl.addEventListener('click', closePositionModal);
+positionSearchEl.addEventListener('input', (event) => {
+  renderPositionOptions(event.target.value);
+});
+createFormEl.addEventListener('submit', handleCreateSubmit);
 detailDrawerCloseEl.addEventListener('click', closeDetailDrawer);
 detailDrawerSaveEl.addEventListener('click', saveDetailChanges);
 detailDrawerEl.addEventListener('click', (event) => {
@@ -771,10 +986,26 @@ modelModalEl.addEventListener('click', (event) => {
     closeModelModal();
   }
 });
+createModalEl.addEventListener('click', (event) => {
+  if (event.target === createModalEl) {
+    closeCreateModal();
+  }
+});
+positionModalEl.addEventListener('click', (event) => {
+  if (event.target === positionModalEl) {
+    closePositionModal();
+  }
+});
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     if (!modelModalEl.hidden) {
       closeModelModal();
+    }
+    if (!createModalEl.hidden) {
+      closeCreateModal();
+    }
+    if (!positionModalEl.hidden) {
+      closePositionModal();
     }
     if (!detailDrawerEl.hidden) {
       closeDetailDrawer();
