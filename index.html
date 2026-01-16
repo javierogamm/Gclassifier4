@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CDC Catalog + Supabase (Vercel)</title>
+    <title>Gestión de Cuadros de Clasficación Gestiona</title>
     <style>
       :root {
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -18,9 +18,24 @@
 
       header {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: space-between;
+        align-items: flex-start;
         margin-bottom: 24px;
+      }
+
+      .header-main {
+        display: grid;
+        gap: 8px;
+      }
+
+      .header-status {
+        margin-left: auto;
+        text-align: right;
+        display: grid;
+        gap: 4px;
+        min-width: 220px;
       }
 
       .card {
@@ -234,6 +249,22 @@
         background: #f8fafc;
       }
 
+      .result-item.section summary {
+        background: #e2e8f0;
+      }
+
+      .result-item.section .result-body {
+        background: #f1f5f9;
+      }
+
+      .result-item.series summary {
+        background: #f8fafc;
+      }
+
+      .result-item.series .result-body {
+        background: #ffffff;
+      }
+
       .child-list {
         display: grid;
         gap: 8px;
@@ -314,12 +345,23 @@
   </head>
   <body>
     <header>
-      <h1>CDC Catalog + Supabase</h1>
-      <p class="muted">
-        Frontend estático listo para Vercel con validación de entorno y ping
-        real vía RPC.
-      </p>
-      <p class="muted"><strong>Versión:</strong> v0.8.0</p>
+      <div class="header-main">
+        <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
+        <p class="muted">
+          Frontend estático listo para Vercel con validación de entorno y ping
+          real vía RPC.
+        </p>
+        <p class="muted"><strong>Versión:</strong> v0.9.0</p>
+      </div>
+      <div class="header-status" aria-live="polite">
+        <div class="status" id="status" data-state="warning">
+          <span id="status-icon">⚠️</span>
+          <span id="status-text">Esperando configuración</span>
+          <span class="badge" id="status-badge">ENV</span>
+        </div>
+        <p id="status-detail" class="muted"></p>
+        <div id="message" class="muted"></div>
+      </div>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>
@@ -327,26 +369,15 @@
       <code>/api/env.js</code> y que las variables de entorno estén configuradas.
     </div>
 
-    <section class="card" aria-live="polite">
-      <div class="status" id="status" data-state="warning">
-        <span id="status-icon">⚠️</span>
-        <span id="status-text">Esperando configuración</span>
-        <span class="badge" id="status-badge">ENV</span>
-      </div>
-      <p id="status-detail" class="muted"></p>
-      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-        <button id="ping-button">Probar conexión</button>
-      </div>
-      <div id="message" class="muted"></div>
-    </section>
+    <button id="ping-button" class="secondary" type="button" hidden>Probar conexión</button>
 
     <section class="card">
-      <h2>Catálogo CDC</h2>
+      <h2>Gestión de cuadros</h2>
       <div id="catalog" class="grid"></div>
     </section>
 
     <section class="card">
-      <h2>Resultados</h2>
+      <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
       <form id="filter-form" class="filters">
         <label>
           Buscar código_serie

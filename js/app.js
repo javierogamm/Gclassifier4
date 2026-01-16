@@ -22,6 +22,7 @@ const filterCodigoSerieEl = document.getElementById('filter-codigo-serie');
 const filterTituloSerieEl = document.getElementById('filter-titulo-serie');
 const filterCategoriaEl = document.getElementById('filter-categoria');
 const clearFiltersButton = document.getElementById('clear-filters');
+const resultsTitleEl = document.getElementById('results-title');
 const detailDrawerEl = document.getElementById('detail-drawer');
 const detailDrawerTitleEl = document.getElementById('detail-drawer-title');
 const detailDrawerBodyEl = document.getElementById('detail-drawer-body');
@@ -249,12 +250,18 @@ function renderCatalog(entities) {
     const wrapper = document.createElement('div');
     wrapper.className = 'entity';
     wrapper.innerHTML = `
-      <div>
-        <strong>${entity.label}</strong>
-        <div class="muted">Carga: ${entity.carga.table} · Vinculación: ${entity.vinculacion.table}</div>
-      </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="secondary" data-table="${entity.carga.table}" data-label="${entity.label}">Seleccionar cuadro (Carga)</button>
+        <button
+          class="secondary"
+          data-table="${entity.carga.table}"
+          data-label="${entity.label}"
+          aria-label="Seleccionar cuadro ${entity.label}"
+        >
+          Seleccionar cuadro
+        </button>
+        <button class="secondary" type="button">Traducciones</button>
+        <button class="secondary" type="button">Actividades</button>
+        <button class="secondary" type="button">Exportar CSV RPA</button>
       </div>
     `;
     catalogEl.appendChild(wrapper);
@@ -303,6 +310,7 @@ async function loadRows(table, modelFilter = null) {
 
   const filteredRows = filterRowsWithHierarchy(data || [], searchFilters);
   renderResults(filteredRows);
+  updateResultsTitle(modelFilter, filteredRows.length);
   showMessage(`Resultados cargados: ${filteredRows.length} filas.`, false);
 }
 
@@ -383,15 +391,29 @@ function filterRowsWithHierarchy(rows, searchFilters) {
   );
 }
 
-function createHierarchyDetails(node) {
+function getToneForCategoria(categoria, depth) {
+  if (categoria) {
+    const normalized = String(categoria).toLowerCase();
+    if (normalized.includes('seccion') || normalized.includes('sección')) {
+      return 'section';
+    }
+    if (normalized.includes('serie')) {
+      return 'series';
+    }
+  }
+  return depth === 0 ? 'section' : 'series';
+}
+
+function createHierarchyDetails(node, depth = 0) {
   const { row } = node;
   const codigoSerie = row?.nombre_serie || row?.codigo_serie || row?.cod || '—';
   const tituloSerie =
     row?.titulo_serie || row?.nombre_entidad || row?.nombre_serie || 'Registro sin título';
   const categoria = row?.categoria || row?.actividad || '—';
+  const toneClass = getToneForCategoria(categoria, depth);
 
   const details = document.createElement('details');
-  details.className = 'result-item';
+  details.className = `result-item ${toneClass}`;
   const summary = document.createElement('summary');
   summary.innerHTML = `
     <div class="result-summary">
@@ -419,7 +441,7 @@ function createHierarchyDetails(node) {
     const childWrapper = document.createElement('div');
     childWrapper.className = 'child-list';
     node.children.forEach((childNode) => {
-      childWrapper.appendChild(createHierarchyDetails(childNode));
+      childWrapper.appendChild(createHierarchyDetails(childNode, depth + 1));
     });
     body.appendChild(childWrapper);
   }
@@ -446,11 +468,21 @@ function renderResults(rows) {
   list.className = 'results-list';
 
   roots.forEach((node) => {
-    list.appendChild(createHierarchyDetails(node));
+    list.appendChild(createHierarchyDetails(node, 0));
   });
 
   resultsEl.innerHTML = '';
   resultsEl.appendChild(list);
+}
+
+function updateResultsTitle(modelFilter, count) {
+  if (!resultsTitleEl) return;
+  const modelLabel = modelFilter
+    ? modelFilter.isNull
+      ? '(sin modelo)'
+      : modelFilter.label || modelFilter.value
+    : 'Todos';
+  resultsTitleEl.textContent = `Modelo: ${modelLabel} · Elementos cargados: ${count}`;
 }
 
 function closeModelModal() {
@@ -682,6 +714,8 @@ async function saveDetailChanges() {
 
 function init() {
   const env = window.ENV;
+
+  updateResultsTitle(null, 0);
 
   if (!env) {
     vercelWarningEl.hidden = false;

@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.9.0
+
+- Se movió el estado de conexión al encabezado derecho y se eliminó la tarjeta dedicada.
+- Se renombró el encabezado principal y el bloque de catálogo a "Gestión de cuadros", mostrando solo botones con nuevas acciones.
+- Se actualizó el bloque de resultados para mostrar modelo y cantidad de elementos cargados, además de diferenciar secciones y series por color.
+- Se actualizó la versión visible de la app.
+
 ## v0.8.0
 
 - Se agregó un botón de guardar en la ficha de detalles para confirmar la edición antes de persistir.
