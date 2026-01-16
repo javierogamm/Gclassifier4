@@ -294,6 +294,21 @@
         padding: 8px 10px;
         font-size: 14px;
       }
+
+      .drawer-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding-top: 4px;
+      }
+
+      .drawer-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
     </style>
     <script src="/api/env.js"></script>
   </head>
@@ -304,7 +319,7 @@
         Frontend estático listo para Vercel con validación de entorno y ping
         real vía RPC.
       </p>
-      <p class="muted"><strong>Versión:</strong> v0.7.0</p>
+      <p class="muted"><strong>Versión:</strong> v0.8.0</p>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>
@@ -371,6 +386,12 @@
           <button id="detail-drawer-close" class="secondary" type="button">Cerrar</button>
         </div>
         <div id="detail-drawer-body" class="detail-grid"></div>
+        <div class="drawer-actions">
+          <div id="detail-drawer-status" class="muted"></div>
+          <div class="drawer-buttons">
+            <button id="detail-drawer-save" type="button">Guardar cambios</button>
+          </div>
+        </div>
       </div>
     </div>
 
