@@ -13,6 +13,11 @@ const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
 const resultsEl = document.getElementById('results');
 const vercelWarningEl = document.getElementById('vercel-warning');
+const modelModalEl = document.getElementById('model-modal');
+const modelModalTitleEl = document.getElementById('model-modal-title');
+const modelModalMessageEl = document.getElementById('model-modal-message');
+const modelModalCloseEl = document.getElementById('model-modal-close');
+const modelListEl = document.getElementById('model-list');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -26,6 +31,7 @@ const PLACEHOLDER_PATTERNS = [
 
 let supabaseClient = null;
 let activeCatalog = null;
+let pendingModelTable = null;
 
 function setStatus(state, text, detail, badge = 'ENV') {
   statusEl.dataset.state = state;
@@ -130,8 +136,7 @@ function renderCatalog(entities) {
         <div class="muted">Carga: ${entity.carga.table} · Vinculación: ${entity.vinculacion.table}</div>
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="secondary" data-table="${entity.carga.table}" data-mode="carga">Cargar filas (carga)</button>
-        <button class="secondary" data-table="${entity.vinculacion.table}" data-mode="vinculacion">Cargar filas (vinculación)</button>
+        <button class="secondary" data-table="${entity.carga.table}" data-label="${entity.label}">Seleccionar cuadro (Carga)</button>
       </div>
     `;
     catalogEl.appendChild(wrapper);
@@ -141,21 +146,35 @@ function renderCatalog(entities) {
     button.addEventListener('click', async (event) => {
       const target = event.currentTarget;
       const table = target.getAttribute('data-table');
-      await loadRows(table);
+      const label = target.getAttribute('data-label');
+      await openModelModal(table, label);
     });
   });
 }
 
-async function loadRows(table) {
+async function loadRows(table, modelFilter = null) {
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de consultar tablas.', true);
     return;
   }
 
   const limit = Number(limitSelect.value || 25);
-  showMessage(`Consultando ${table} (límite ${limit})...`, false);
+  const filterLabel = modelFilter?.label
+    ? ` · Modelo: ${modelFilter.label}`
+    : modelFilter?.isNull
+      ? ' · Modelo: (sin modelo)'
+      : '';
+  showMessage(`Consultando ${table}${filterLabel} (límite ${limit})...`, false);
 
-  const { data, error } = await supabaseClient.from(table).select('*').limit(limit);
+  let query = supabaseClient.from(table).select('*').limit(limit);
+  if (modelFilter) {
+    if (modelFilter.isNull) {
+      query = query.is('modelo', null);
+    } else {
+      query = query.eq('modelo', modelFilter.value);
+    }
+  }
+  const { data, error } = await query;
 
   if (error) {
     const friendly = mapSupabaseError(error);
@@ -189,6 +208,73 @@ function renderTable(rows) {
       <tbody>${body}</tbody>
     </table>
   `;
+}
+
+function closeModelModal() {
+  modelModalEl.hidden = true;
+  pendingModelTable = null;
+  modelModalMessageEl.textContent = '';
+  modelListEl.innerHTML = '';
+}
+
+async function openModelModal(table, label) {
+  if (!supabaseClient) {
+    showMessage('Configura Supabase antes de consultar tablas.', true);
+    return;
+  }
+
+  pendingModelTable = table;
+  modelModalTitleEl.textContent = `Selecciona un modelo (${label || table})`;
+  modelModalMessageEl.textContent = 'Cargando valores disponibles...';
+  modelListEl.innerHTML = '';
+  modelModalEl.hidden = false;
+
+  const { data, error } = await supabaseClient.from(table).select('modelo').limit(1000);
+
+  if (error) {
+    modelModalMessageEl.textContent = mapSupabaseError(error);
+    return;
+  }
+
+  const uniqueModels = new Map();
+  (data || []).forEach((row) => {
+    const rawValue = row?.modelo;
+    if (rawValue === null || rawValue === undefined || rawValue === '') {
+      if (!uniqueModels.has('__empty__')) {
+        uniqueModels.set('__empty__', { label: '(sin modelo)', value: null, isNull: true });
+      }
+      return;
+    }
+    const key = String(rawValue);
+    if (!uniqueModels.has(key)) {
+      uniqueModels.set(key, { label: key, value: rawValue, isNull: false });
+    }
+  });
+
+  const modelOptions = Array.from(uniqueModels.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }),
+  );
+
+  if (modelOptions.length === 0) {
+    modelModalMessageEl.textContent = 'No se encontraron valores en el campo "modelo".';
+    return;
+  }
+
+  modelModalMessageEl.textContent = 'Selecciona un modelo para aplicar el filtro:';
+  modelOptions.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary';
+    button.textContent = option.label;
+    button.addEventListener('click', async () => {
+      const selectedTable = pendingModelTable;
+      closeModelModal();
+      if (selectedTable) {
+        await loadRows(selectedTable, option);
+      }
+    });
+    modelListEl.appendChild(button);
+  });
 }
 
 function init() {
@@ -235,5 +321,16 @@ function init() {
 }
 
 pingButton.addEventListener('click', pingSupabase);
+modelModalCloseEl.addEventListener('click', closeModelModal);
+modelModalEl.addEventListener('click', (event) => {
+  if (event.target === modelModalEl) {
+    closeModelModal();
+  }
+});
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !modelModalEl.hidden) {
+    closeModelModal();
+  }
+});
 
 init();
