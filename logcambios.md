@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.8.0
+
+- Se agregó un botón de guardar en la ficha de detalles para confirmar la edición antes de persistir.
+- Se incorporó la actualización en Supabase para los campos editados y la actividad vinculada al guardar.
+- Se actualizó la versión visible de la app.
+
 ## v0.7.0
 
 - Se actualizó el buscador para incluir los elementos descendientes cuando se encuentra una coincidencia.

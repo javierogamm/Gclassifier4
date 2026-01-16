@@ -26,6 +26,8 @@ const detailDrawerEl = document.getElementById('detail-drawer');
 const detailDrawerTitleEl = document.getElementById('detail-drawer-title');
 const detailDrawerBodyEl = document.getElementById('detail-drawer-body');
 const detailDrawerCloseEl = document.getElementById('detail-drawer-close');
+const detailDrawerSaveEl = document.getElementById('detail-drawer-save');
+const detailDrawerStatusEl = document.getElementById('detail-drawer-status');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -157,6 +159,17 @@ function mapSupabaseError(error) {
     return 'Tabla no existe o schema incorrecto.';
   }
   return error.message || 'Error inesperado al consultar Supabase.';
+}
+
+function normalizeInputValue(value) {
+  const normalized = String(value ?? '').trim();
+  return normalized === '' ? null : normalized;
+}
+
+function updateDetailStatus(message, isError = false) {
+  if (!detailDrawerStatusEl) return;
+  detailDrawerStatusEl.textContent = message || '';
+  detailDrawerStatusEl.className = isError ? 'error' : 'muted';
 }
 
 function getSearchFilters() {
@@ -528,8 +541,24 @@ async function openModelModal(table, label) {
 async function openDetailDrawer(row, title) {
   detailDrawerTitleEl.textContent = title || 'Detalles del registro';
   detailDrawerBodyEl.innerHTML = '';
+  updateDetailStatus('Edita los campos y guarda los cambios para confirmar.', false);
+  detailDrawerSaveEl.disabled = false;
 
   const codigoSerie = row?.codigo_serie ?? row?.cod ?? '';
+  detailDrawerEl.dataset.codigoSerie = codigoSerie;
+  if (row?.id !== undefined && row?.id !== null) {
+    detailDrawerEl.dataset.identityField = 'id';
+    detailDrawerEl.dataset.identityValue = row.id;
+  } else if (row?.codigo_serie !== undefined && row?.codigo_serie !== null) {
+    detailDrawerEl.dataset.identityField = 'codigo_serie';
+    detailDrawerEl.dataset.identityValue = row.codigo_serie;
+  } else if (row?.cod !== undefined && row?.cod !== null) {
+    detailDrawerEl.dataset.identityField = 'cod';
+    detailDrawerEl.dataset.identityValue = row.cod;
+  } else {
+    detailDrawerEl.dataset.identityField = '';
+    detailDrawerEl.dataset.identityValue = '';
+  }
   const actividad = await fetchActividadForCodigoSerie(codigoSerie);
   const fields = [
     { key: 'posicion', label: 'posicion', value: row?.posicion },
@@ -551,6 +580,7 @@ async function openDetailDrawer(row, title) {
     input.name = key;
     input.value = value === null || value === undefined ? '' : String(value);
     input.placeholder = '—';
+    input.dataset.original = input.value;
     item.appendChild(labelEl);
     item.appendChild(input);
     detailDrawerBodyEl.appendChild(item);
@@ -561,6 +591,93 @@ async function openDetailDrawer(row, title) {
 
 function closeDetailDrawer() {
   detailDrawerEl.hidden = true;
+}
+
+async function saveDetailChanges() {
+  if (!supabaseClient) {
+    showMessage('Configura Supabase antes de guardar cambios.', true);
+    return;
+  }
+  if (!activeTable) {
+    showMessage('Selecciona un cuadro del catálogo antes de guardar.', true);
+    return;
+  }
+
+  const identityField = detailDrawerEl.dataset.identityField;
+  const identityValue = detailDrawerEl.dataset.identityValue;
+  if (!identityField) {
+    updateDetailStatus('No se pudo identificar el registro para guardar.', true);
+    return;
+  }
+
+  const inputs = Array.from(detailDrawerBodyEl.querySelectorAll('input[name]'));
+  const updates = {};
+  let actividadUpdate = null;
+  let actividadChanged = false;
+
+  inputs.forEach((input) => {
+    const key = input.name;
+    const currentValue = normalizeInputValue(input.value);
+    const originalValue = normalizeInputValue(input.dataset.original ?? '');
+    if (key === 'actividad') {
+      if (currentValue !== originalValue) {
+        actividadUpdate = currentValue;
+        actividadChanged = true;
+      }
+      return;
+    }
+    if (currentValue !== originalValue) {
+      updates[key] = currentValue;
+    }
+  });
+
+  const hasMainUpdates = Object.keys(updates).length > 0;
+  const vinculacionTable = getVinculacionTableForActive();
+  const codigoSerie = detailDrawerEl.dataset.codigoSerie;
+  const shouldUpdateActividad = actividadChanged && vinculacionTable && codigoSerie;
+
+  if (!hasMainUpdates && !shouldUpdateActividad) {
+    updateDetailStatus('No hay cambios para guardar.', false);
+    return;
+  }
+
+  detailDrawerSaveEl.disabled = true;
+  updateDetailStatus('Guardando cambios...', false);
+
+  try {
+    if (hasMainUpdates) {
+      const { error } = await supabaseClient
+        .from(activeTable)
+        .update(updates)
+        .eq(identityField, identityValue);
+      if (error) {
+        throw error;
+      }
+    }
+
+    if (shouldUpdateActividad) {
+      const { error } = await supabaseClient
+        .from(vinculacionTable)
+        .update({ actividad: actividadUpdate })
+        .eq('cod', codigoSerie);
+      if (error) {
+        throw error;
+      }
+    }
+
+    inputs.forEach((input) => {
+      input.dataset.original = input.value;
+    });
+
+    updateDetailStatus('Cambios guardados en Supabase.', false);
+    if (activeTable) {
+      await loadRows(activeTable, activeModelFilter);
+    }
+  } catch (error) {
+    updateDetailStatus(mapSupabaseError(error), true);
+  } finally {
+    detailDrawerSaveEl.disabled = false;
+  }
 }
 
 function init() {
@@ -609,6 +726,7 @@ function init() {
 pingButton.addEventListener('click', pingSupabase);
 modelModalCloseEl.addEventListener('click', closeModelModal);
 detailDrawerCloseEl.addEventListener('click', closeDetailDrawer);
+detailDrawerSaveEl.addEventListener('click', saveDetailChanges);
 detailDrawerEl.addEventListener('click', (event) => {
   if (event.target === detailDrawerEl) {
     closeDetailDrawer();
