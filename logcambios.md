@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.6.0
+
+- Se ajustó la ficha de detalles para mostrar solo posicion, codigo_serie, titulo_serie, categoria y actividad (desde Vinculación), con campos editables.
+- Se centró y amplió el modal de detalles para una visualización más cómoda.
+- Se actualizó la versión visible de la app.
+
 ## v0.5.0
 
 - Se corrigió el acordeón para mostrar solo los elementos raíz (posicion vacía) y revelar los hijos inmediatos al expandir cada registro.
