@@ -8,7 +8,6 @@ const statusTextEl = document.getElementById('status-text');
 const statusBadgeEl = document.getElementById('status-badge');
 const statusDetailEl = document.getElementById('status-detail');
 const pingButton = document.getElementById('ping-button');
-const limitSelect = document.getElementById('limit-select');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
 const resultsEl = document.getElementById('results');
@@ -18,6 +17,15 @@ const modelModalTitleEl = document.getElementById('model-modal-title');
 const modelModalMessageEl = document.getElementById('model-modal-message');
 const modelModalCloseEl = document.getElementById('model-modal-close');
 const modelListEl = document.getElementById('model-list');
+const filterFormEl = document.getElementById('filter-form');
+const filterCodigoSerieEl = document.getElementById('filter-codigo-serie');
+const filterTituloSerieEl = document.getElementById('filter-titulo-serie');
+const filterCategoriaEl = document.getElementById('filter-categoria');
+const clearFiltersButton = document.getElementById('clear-filters');
+const detailDrawerEl = document.getElementById('detail-drawer');
+const detailDrawerTitleEl = document.getElementById('detail-drawer-title');
+const detailDrawerBodyEl = document.getElementById('detail-drawer-body');
+const detailDrawerCloseEl = document.getElementById('detail-drawer-close');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -32,6 +40,8 @@ const PLACEHOLDER_PATTERNS = [
 let supabaseClient = null;
 let activeCatalog = null;
 let pendingModelTable = null;
+let activeTable = null;
+let activeModelFilter = null;
 
 function setStatus(state, text, detail, badge = 'ENV') {
   statusEl.dataset.state = state;
@@ -125,6 +135,56 @@ function mapSupabaseError(error) {
   return error.message || 'Error inesperado al consultar Supabase.';
 }
 
+function getSearchFilters() {
+  return {
+    codigoSerie: filterCodigoSerieEl.value.trim(),
+    tituloSerie: filterTituloSerieEl.value.trim(),
+    categoria: filterCategoriaEl.value.trim(),
+  };
+}
+
+async function fetchAllRows(table, modelFilter, searchFilters) {
+  const batchSize = 1000;
+  let from = 0;
+  let allRows = [];
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabaseClient.from(table).select('*').range(from, from + batchSize - 1);
+    if (modelFilter) {
+      if (modelFilter.isNull) {
+        query = query.is('modelo', null);
+      } else {
+        query = query.eq('modelo', modelFilter.value);
+      }
+    }
+
+    if (searchFilters?.codigoSerie) {
+      query = query.ilike('codigo_serie', `%${searchFilters.codigoSerie}%`);
+    }
+    if (searchFilters?.tituloSerie) {
+      query = query.ilike('titulo_serie', `%${searchFilters.tituloSerie}%`);
+    }
+    if (searchFilters?.categoria) {
+      query = query.ilike('categoria', `%${searchFilters.categoria}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      return { data: null, error };
+    }
+    const batch = data || [];
+    allRows = allRows.concat(batch);
+    if (batch.length < batchSize) {
+      hasMore = false;
+    } else {
+      from += batchSize;
+    }
+  }
+
+  return { data: allRows, error: null };
+}
+
 function renderCatalog(entities) {
   catalogEl.innerHTML = '';
   entities.forEach((entity) => {
@@ -158,23 +218,23 @@ async function loadRows(table, modelFilter = null) {
     return;
   }
 
-  const limit = Number(limitSelect.value || 25);
   const filterLabel = modelFilter?.label
     ? ` · Modelo: ${modelFilter.label}`
     : modelFilter?.isNull
       ? ' · Modelo: (sin modelo)'
       : '';
-  showMessage(`Consultando ${table}${filterLabel} (límite ${limit})...`, false);
+  const searchFilters = getSearchFilters();
+  const filterParts = [];
+  if (searchFilters.codigoSerie) filterParts.push(`codigo_serie contiene "${searchFilters.codigoSerie}"`);
+  if (searchFilters.tituloSerie) filterParts.push(`titulo_serie contiene "${searchFilters.tituloSerie}"`);
+  if (searchFilters.categoria) filterParts.push(`categoria contiene "${searchFilters.categoria}"`);
+  const searchLabel = filterParts.length ? ` · Filtros: ${filterParts.join(' · ')}` : '';
+  showMessage(`Consultando ${table}${filterLabel}${searchLabel}...`, false);
 
-  let query = supabaseClient.from(table).select('*').limit(limit);
-  if (modelFilter) {
-    if (modelFilter.isNull) {
-      query = query.is('modelo', null);
-    } else {
-      query = query.eq('modelo', modelFilter.value);
-    }
-  }
-  const { data, error } = await query;
+  activeTable = table;
+  activeModelFilter = modelFilter;
+
+  const { data, error } = await fetchAllRows(table, modelFilter, searchFilters);
 
   if (error) {
     const friendly = mapSupabaseError(error);
@@ -183,31 +243,120 @@ async function loadRows(table, modelFilter = null) {
     return;
   }
 
-  renderTable(data || []);
+  renderResults(data || []);
   showMessage(`Resultados cargados: ${data?.length || 0} filas.`, false);
 }
 
-function renderTable(rows) {
+function normalizeElementList(rawValue) {
+  if (!rawValue) return [];
+  if (Array.isArray(rawValue)) return rawValue;
+  if (typeof rawValue === 'string') {
+    try {
+      const parsed = JSON.parse(rawValue);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (error) {
+      return [];
+    }
+  }
+  return [];
+}
+
+function extractChildElements(row) {
+  const preferredKeys = ['elementos', 'items', 'children', 'subseries', 'series_hijas'];
+  const elements = [];
+
+  preferredKeys.forEach((key) => {
+    if (row && key in row) {
+      const parsed = normalizeElementList(row[key]);
+      if (parsed.length) {
+        elements.push({ key, values: parsed });
+      }
+    }
+  });
+
+  Object.entries(row || {}).forEach(([key, value]) => {
+    if (preferredKeys.includes(key)) return;
+    if (Array.isArray(value)) {
+      elements.push({ key, values: value });
+    }
+  });
+
+  return elements;
+}
+
+function formatElementValue(value) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function renderResults(rows) {
   if (!rows || rows.length === 0) {
     resultsEl.innerHTML = '<p class="muted">No hay filas para mostrar.</p>';
     return;
   }
 
-  const columns = Object.keys(rows[0]);
-  const header = columns.map((col) => `<th>${col}</th>`).join('');
-  const body = rows
-    .map((row) => {
-      const cells = columns.map((col) => `<td>${row[col] ?? ''}</td>`).join('');
-      return `<tr>${cells}</tr>`;
-    })
-    .join('');
+  const list = document.createElement('div');
+  list.className = 'results-list';
 
-  resultsEl.innerHTML = `
-    <table>
-      <thead><tr>${header}</tr></thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
+  rows.forEach((row, index) => {
+    const codigoSerie = row.codigo_serie || row.cod || '—';
+    const tituloSerie = row.titulo_serie || row.nombre_entidad || `Registro ${index + 1}`;
+    const categoria = row.categoria || row.actividad || '—';
+    const elementos = extractChildElements(row);
+
+    const details = document.createElement('details');
+    details.className = 'result-item';
+    const summary = document.createElement('summary');
+    summary.innerHTML = `
+      <div class="result-summary">
+        <strong>${tituloSerie}</strong>
+        <div class="result-meta">
+          <span><strong>Código:</strong> ${codigoSerie}</span>
+          <span><strong>Categoría:</strong> ${categoria}</span>
+        </div>
+      </div>
+      <button type="button" class="secondary">Ver detalles</button>
+    `;
+
+    const body = document.createElement('div');
+    body.className = 'result-body';
+    if (elementos.length === 0) {
+      body.innerHTML = '<p class="muted">Sin elementos asociados.</p>';
+    } else {
+      const childWrapper = document.createElement('div');
+      childWrapper.className = 'child-list';
+      elementos.forEach((group) => {
+        const title = document.createElement('strong');
+        title.textContent = group.key;
+        const listEl = document.createElement('ul');
+        group.values.forEach((item) => {
+          const li = document.createElement('li');
+          li.textContent = formatElementValue(item);
+          listEl.appendChild(li);
+        });
+        childWrapper.appendChild(title);
+        childWrapper.appendChild(listEl);
+      });
+      body.appendChild(childWrapper);
+    }
+
+    const detailButton = summary.querySelector('button');
+    detailButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openDetailDrawer(row, tituloSerie);
+    });
+
+    details.appendChild(summary);
+    details.appendChild(body);
+    list.appendChild(details);
+  });
+
+  resultsEl.innerHTML = '';
+  resultsEl.appendChild(list);
 }
 
 function closeModelModal() {
@@ -229,15 +378,33 @@ async function openModelModal(table, label) {
   modelListEl.innerHTML = '';
   modelModalEl.hidden = false;
 
-  const { data, error } = await supabaseClient.from(table).select('modelo').limit(1000);
+  let from = 0;
+  const batchSize = 1000;
+  const allModels = [];
+  let hasMore = true;
 
-  if (error) {
-    modelModalMessageEl.textContent = mapSupabaseError(error);
-    return;
+  while (hasMore) {
+    const { data, error } = await supabaseClient
+      .from(table)
+      .select('modelo')
+      .range(from, from + batchSize - 1);
+
+    if (error) {
+      modelModalMessageEl.textContent = mapSupabaseError(error);
+      return;
+    }
+
+    const batch = data || [];
+    allModels.push(...batch);
+    if (batch.length < batchSize) {
+      hasMore = false;
+    } else {
+      from += batchSize;
+    }
   }
 
   const uniqueModels = new Map();
-  (data || []).forEach((row) => {
+  allModels.forEach((row) => {
     const rawValue = row?.modelo;
     if (rawValue === null || rawValue === undefined || rawValue === '') {
       if (!uniqueModels.has('__empty__')) {
@@ -275,6 +442,35 @@ async function openModelModal(table, label) {
     });
     modelListEl.appendChild(button);
   });
+}
+
+function openDetailDrawer(row, title) {
+  detailDrawerTitleEl.textContent = title || 'Detalles del registro';
+  detailDrawerBodyEl.innerHTML = '';
+
+  Object.entries(row || {}).forEach(([key, value]) => {
+    const item = document.createElement('div');
+    item.className = 'detail-item';
+    const label = document.createElement('strong');
+    label.textContent = key;
+    const valueEl = document.createElement('span');
+    if (value === null || value === undefined || value === '') {
+      valueEl.textContent = '—';
+    } else if (typeof value === 'object') {
+      valueEl.textContent = JSON.stringify(value);
+    } else {
+      valueEl.textContent = String(value);
+    }
+    item.appendChild(label);
+    item.appendChild(valueEl);
+    detailDrawerBodyEl.appendChild(item);
+  });
+
+  detailDrawerEl.hidden = false;
+}
+
+function closeDetailDrawer() {
+  detailDrawerEl.hidden = true;
 }
 
 function init() {
@@ -322,14 +518,45 @@ function init() {
 
 pingButton.addEventListener('click', pingSupabase);
 modelModalCloseEl.addEventListener('click', closeModelModal);
+detailDrawerCloseEl.addEventListener('click', closeDetailDrawer);
+detailDrawerEl.addEventListener('click', (event) => {
+  if (event.target === detailDrawerEl) {
+    closeDetailDrawer();
+  }
+});
 modelModalEl.addEventListener('click', (event) => {
   if (event.target === modelModalEl) {
     closeModelModal();
   }
 });
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !modelModalEl.hidden) {
-    closeModelModal();
+  if (event.key === 'Escape') {
+    if (!modelModalEl.hidden) {
+      closeModelModal();
+    }
+    if (!detailDrawerEl.hidden) {
+      closeDetailDrawer();
+    }
+  }
+});
+
+filterFormEl.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!activeTable) {
+    showMessage('Selecciona un cuadro del catálogo antes de aplicar filtros.', true);
+    return;
+  }
+  await loadRows(activeTable, activeModelFilter);
+});
+
+clearFiltersButton.addEventListener('click', async () => {
+  filterCodigoSerieEl.value = '';
+  filterTituloSerieEl.value = '';
+  filterCategoriaEl.value = '';
+  if (activeTable) {
+    await loadRows(activeTable, activeModelFilter);
+  } else {
+    showMessage('Filtros limpiados. Selecciona un cuadro para ver resultados.', false);
   }
 });
 
