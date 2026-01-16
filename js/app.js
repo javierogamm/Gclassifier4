@@ -194,12 +194,9 @@ function renderTable(rows) {
 function init() {
   const env = window.ENV;
 
-  if (!env || window.__ENV_LOAD_FAILED__) {
+  if (!env) {
     vercelWarningEl.hidden = false;
-    const detail = window.__ENV_LOAD_FAILED__
-      ? 'No se pudo cargar /api/env.js (404 o fallo de red).'
-      : 'No se encontró configuración de entorno.';
-    setStatus('warning', 'Sin /api/env.js', detail, 'ENV');
+    setStatus('warning', 'Sin /api/env.js', 'No se encontró configuración de entorno.', 'ENV');
     pingButton.disabled = true;
     renderCatalog([]);
     return;

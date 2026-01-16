@@ -52,9 +52,6 @@ window.ENV = {
 Si el endpoint no existe o las variables están vacías, la UI muestra el aviso:
 **"Este proyecto está diseñado para Vercel…"**
 
-> Si ves un 404 en `/api/env.js`, confirma que el deployment sea en Vercel y que
-> el archivo `api/env.js` esté presente en el repo.
-
 ---
 
 ## 3. Migraciones en Supabase (paso a paso)
