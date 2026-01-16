@@ -1,5 +1,13 @@
 # Log de cambios
 
+## v0.4.0
+
+- Se eliminó el límite fijo de carga y se añadió paginación automática para traer todas las filas desde Supabase.
+- Se reemplazó la tabla de resultados por un listado en acordeón que muestra primero los elementos asociados.
+- Se agregó un botón "Ver detalles" que abre una ficha lateral con todos los campos del registro seleccionado.
+- Se incorporaron buscadores superiores para código de serie, título de serie y categoría.
+- Se actualizó la versión visible de la app.
+
 ## v0.3.0
 
 - Se añadió un modal para listar valores únicos de "modelo" y aplicar el filtro antes de consultar la tabla de carga.

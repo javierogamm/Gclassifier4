@@ -82,6 +82,28 @@
         gap: 16px;
       }
 
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+
+      .filters label {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .filters input {
+        border-radius: 8px;
+        border: 1px solid #cbd5f5;
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
       .entity {
         border: 1px solid #e2e8f0;
         border-radius: 12px;
@@ -165,6 +187,105 @@
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
         gap: 12px;
       }
+
+      .results-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .result-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0;
+        overflow: hidden;
+        background: #ffffff;
+      }
+
+      .result-item summary {
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 16px;
+        cursor: pointer;
+      }
+
+      .result-item summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .result-summary {
+        display: grid;
+        gap: 4px;
+      }
+
+      .result-meta {
+        font-size: 13px;
+        color: #64748b;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .result-body {
+        border-top: 1px solid #e2e8f0;
+        padding: 12px 16px;
+        background: #f8fafc;
+      }
+
+      .child-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .child-list ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .drawer {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: flex-end;
+        background: rgba(15, 23, 42, 0.45);
+        padding: 24px;
+      }
+
+      .drawer[hidden] {
+        display: none;
+      }
+
+      .drawer-content {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px;
+        width: min(480px, 100%);
+        max-height: 100%;
+        overflow: auto;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+        display: grid;
+        gap: 16px;
+      }
+
+      .detail-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .detail-item {
+        display: grid;
+        gap: 4px;
+        font-size: 14px;
+      }
+
+      .detail-item strong {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+      }
     </style>
     <script src="/api/env.js"></script>
   </head>
@@ -175,7 +296,7 @@
         Frontend estático listo para Vercel con validación de entorno y ping
         real vía RPC.
       </p>
-      <p class="muted"><strong>Versión:</strong> v0.3.0</p>
+      <p class="muted"><strong>Versión:</strong> v0.4.0</p>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>
@@ -192,13 +313,6 @@
       <p id="status-detail" class="muted"></p>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <button id="ping-button">Probar conexión</button>
-        <label>
-          Límite:
-          <select id="limit-select">
-            <option value="25">25</option>
-            <option value="100">100</option>
-          </select>
-        </label>
       </div>
       <div id="message" class="muted"></div>
     </section>
@@ -210,6 +324,24 @@
 
     <section class="card">
       <h2>Resultados</h2>
+      <form id="filter-form" class="filters">
+        <label>
+          Buscar código_serie
+          <input id="filter-codigo-serie" type="search" placeholder="Ej: SER-001" />
+        </label>
+        <label>
+          Buscar título de serie
+          <input id="filter-titulo-serie" type="search" placeholder="Ej: Gestión" />
+        </label>
+        <label>
+          Buscar categoría
+          <input id="filter-categoria" type="search" placeholder="Ej: Documentación" />
+        </label>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="submit">Aplicar filtros</button>
+          <button type="button" id="clear-filters" class="secondary">Limpiar</button>
+        </div>
+      </form>
       <div id="results"></div>
     </section>
 
@@ -221,6 +353,16 @@
         </div>
         <p id="model-modal-message" class="muted"></p>
         <div id="model-list" class="modal-grid"></div>
+      </div>
+    </div>
+
+    <div id="detail-drawer" class="drawer" hidden>
+      <div class="drawer-content" role="dialog" aria-modal="true" aria-labelledby="detail-drawer-title">
+        <div class="modal-header">
+          <h3 id="detail-drawer-title">Detalles del registro</h3>
+          <button id="detail-drawer-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <div id="detail-drawer-body" class="detail-grid"></div>
       </div>
     </div>
 
