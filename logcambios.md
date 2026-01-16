@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.4.1
+
+- Se implementó un acordeón jerárquico para mostrar únicamente los elementos con padre nulo y desplegar sus hijos inmediatos en cascada.
+- Se añadieron estilos específicos para la navegación jerárquica del acordeón en los resultados.
+- Se actualizó la versión visible de la app.
+
 ## v0.4.0
 
 - Se eliminó el límite fijo de carga y se añadió paginación automática para traer todas las filas desde Supabase.

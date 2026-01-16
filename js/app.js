@@ -292,6 +292,154 @@ function formatElementValue(value) {
   return String(value);
 }
 
+const HIERARCHY_PARENT_KEYS = [
+  'parent_id',
+  'parentId',
+  'padre_id',
+  'padreId',
+  'id_padre',
+  'idPadre',
+  'parent',
+  'padre',
+];
+
+const HIERARCHY_ID_KEYS = ['id', 'uuid', 'codigo', 'code', 'key'];
+
+const HIERARCHY_LABEL_KEYS = [
+  'titulo',
+  'title',
+  'nombre',
+  'name',
+  'label',
+  'descripcion',
+  'description',
+  'codigo',
+  'code',
+  'id',
+  'uuid',
+];
+
+function resolveHierarchyKeys(values) {
+  let parentKey = null;
+  let idKey = null;
+
+  values.forEach((item) => {
+    if (!item || typeof item !== 'object') return;
+    if (!parentKey) {
+      parentKey = HIERARCHY_PARENT_KEYS.find((key) => key in item) || null;
+    }
+    if (!idKey) {
+      idKey = HIERARCHY_ID_KEYS.find((key) => key in item) || null;
+    }
+  });
+
+  return { parentKey, idKey };
+}
+
+function normalizeHierarchyKey(value) {
+  if (value === null || value === undefined || value === '') return null;
+  return String(value);
+}
+
+function buildHierarchy(values, parentKey, idKey) {
+  const nodes = new Map();
+  for (const item of values) {
+    if (!item || typeof item !== 'object') {
+      return null;
+    }
+    const rawId = item[idKey];
+    const normalizedId = normalizeHierarchyKey(rawId);
+    if (!normalizedId) {
+      return null;
+    }
+    nodes.set(normalizedId, { item, children: [] });
+  }
+
+  const roots = [];
+  nodes.forEach((node) => {
+    const normalizedParent = normalizeHierarchyKey(node.item[parentKey]);
+    if (!normalizedParent || !nodes.has(normalizedParent)) {
+      roots.push(node);
+    } else {
+      nodes.get(normalizedParent).children.push(node);
+    }
+  });
+
+  return roots;
+}
+
+function getHierarchyLabel(item, fallbackIndex) {
+  if (!item || typeof item !== 'object') {
+    return formatElementValue(item);
+  }
+
+  const labelKey = HIERARCHY_LABEL_KEYS.find((key) => key in item);
+  if (labelKey) {
+    const value = item[labelKey];
+    if (value !== null && value !== undefined && value !== '') {
+      return String(value);
+    }
+  }
+
+  return `Elemento ${fallbackIndex + 1}`;
+}
+
+function renderHierarchyFields(item, container, excludedKeys = []) {
+  const fieldList = document.createElement('ul');
+  fieldList.className = 'accordion-fields';
+  const excluded = new Set(excludedKeys);
+
+  Object.entries(item || {}).forEach(([key, value]) => {
+    if (excluded.has(key)) return;
+    if (Array.isArray(value)) return;
+    const li = document.createElement('li');
+    const label = document.createElement('strong');
+    label.textContent = `${key}:`;
+    const content = document.createElement('span');
+    content.textContent = formatElementValue(value);
+    li.appendChild(label);
+    li.appendChild(content);
+    fieldList.appendChild(li);
+  });
+
+  if (fieldList.childElementCount === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Sin detalles adicionales.';
+    container.appendChild(empty);
+    return;
+  }
+
+  container.appendChild(fieldList);
+}
+
+function renderHierarchyNodes(nodes, container, options) {
+  nodes.forEach((node, index) => {
+    const details = document.createElement('details');
+    details.className = 'accordion-item';
+
+    const summary = document.createElement('summary');
+    summary.className = 'accordion-summary';
+    summary.textContent = getHierarchyLabel(node.item, index);
+
+    details.appendChild(summary);
+
+    const content = document.createElement('div');
+    content.className = 'accordion-content';
+    renderHierarchyFields(node.item, content, options.excludedKeys);
+
+    if (node.children.length > 0) {
+      const childContainer = document.createElement('div');
+      childContainer.className = 'accordion-children';
+      renderHierarchyNodes(node.children, childContainer, options);
+      content.appendChild(childContainer);
+    }
+
+    details.appendChild(content);
+    container.appendChild(details);
+  });
+}
+
 function renderResults(rows) {
   if (!rows || rows.length === 0) {
     resultsEl.innerHTML = '<p class="muted">No hay filas para mostrar.</p>';
@@ -331,12 +479,25 @@ function renderResults(rows) {
       elementos.forEach((group) => {
         const title = document.createElement('strong');
         title.textContent = group.key;
-        const listEl = document.createElement('ul');
-        group.values.forEach((item) => {
-          const li = document.createElement('li');
-          li.textContent = formatElementValue(item);
-          listEl.appendChild(li);
-        });
+        const listEl = document.createElement('div');
+        listEl.className = 'accordion-tree';
+        const { parentKey, idKey } = resolveHierarchyKeys(group.values);
+        const hierarchyNodes =
+          parentKey && idKey ? buildHierarchy(group.values, parentKey, idKey) : null;
+
+        if (hierarchyNodes && hierarchyNodes.length > 0) {
+          renderHierarchyNodes(hierarchyNodes, listEl, {
+            excludedKeys: [parentKey],
+          });
+        } else {
+          const fallbackList = document.createElement('ul');
+          group.values.forEach((item) => {
+            const li = document.createElement('li');
+            li.textContent = formatElementValue(item);
+            fallbackList.appendChild(li);
+          });
+          listEl.appendChild(fallbackList);
+        }
         childWrapper.appendChild(title);
         childWrapper.appendChild(listEl);
       });

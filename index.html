@@ -239,6 +239,65 @@
         gap: 8px;
       }
 
+      .accordion-tree {
+        display: grid;
+        gap: 8px;
+      }
+
+      .accordion-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .accordion-item summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 12px;
+        font-weight: 600;
+        background: #f1f5f9;
+      }
+
+      .accordion-item summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .accordion-content {
+        padding: 10px 12px;
+        background: #f8fafc;
+        display: grid;
+        gap: 10px;
+      }
+
+      .accordion-children {
+        display: grid;
+        gap: 8px;
+        padding-left: 12px;
+        border-left: 2px solid #e2e8f0;
+      }
+
+      .accordion-fields {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+      }
+
+      .accordion-fields li {
+        display: grid;
+        grid-template-columns: minmax(120px, 180px) 1fr;
+        gap: 8px;
+      }
+
+      .accordion-fields strong {
+        font-weight: 600;
+        color: #475569;
+      }
+
       .child-list ul {
         margin: 0;
         padding-left: 20px;
@@ -296,7 +355,7 @@
         Frontend estático listo para Vercel con validación de entorno y ping
         real vía RPC.
       </p>
-      <p class="muted"><strong>Versión:</strong> v0.4.0</p>
+      <p class="muted"><strong>Versión:</strong> v0.4.1</p>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>
