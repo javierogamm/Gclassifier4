@@ -1,15 +1,90 @@
-insert into public.series_carga (codigo, nombre, descripcion)
+insert into public.series_carga (
+  nombre_entidad,
+  sobrescribir,
+  posicion,
+  codigo_serie,
+  titulo_serie,
+  categoria,
+  unidad_gestora,
+  libro_oficial,
+  nivel_seguridad,
+  advertencia_seguridad,
+  sensibilidad_datos_personales,
+  nivel_confidencialidad,
+  tipo_acceso,
+  condiciones_reutilizacion,
+  codigo_causa_limitacion,
+  normativa,
+  valor_primario,
+  plazo,
+  valor_secundario,
+  dictamen,
+  documento_esencial,
+  accion_dictaminada,
+  ejecucion,
+  motivacion
+)
 values
-  ('SER-001', 'Serie base', 'Serie de ejemplo'),
-  ('SER-002', 'Serie secundaria', 'Otra serie para pruebas');
+  (
+    'Entidad demo',
+    'no',
+    '1',
+    'SER-001',
+    'Serie base',
+    'General',
+    'Unidad A',
+    'Sí',
+    'Bajo',
+    'Sin advertencias',
+    'No',
+    'Público',
+    'Libre',
+    'Sin restricciones',
+    'N/A',
+    'Normativa demo',
+    'Administrativo',
+    '5 años',
+    'Histórico',
+    'Favorable',
+    'Sí',
+    'Conservación',
+    'Automática',
+    'Motivación de ejemplo'
+  ),
+  (
+    'Entidad demo',
+    'sí',
+    '2',
+    'SER-002',
+    'Serie secundaria',
+    'Especial',
+    'Unidad B',
+    'No',
+    'Medio',
+    'Revisar acceso',
+    'Sí',
+    'Restringido',
+    'Parcial',
+    'Con condiciones',
+    'CL-01',
+    'Normativa interna',
+    'Legal',
+    '10 años',
+    'Cultural',
+    'Condicionado',
+    'No',
+    'Transferencia',
+    'Manual',
+    'Motivación secundaria'
+  );
 
-insert into public.subseries_carga (codigo, nombre, descripcion, serie_codigo)
+insert into public.series_vinculacion (
+  nombre_entidad,
+  sobrescribir,
+  cod,
+  actividad,
+  plazos
+)
 values
-  ('SUB-001', 'Subserie A', 'Subserie relacionada', 'SER-001'),
-  ('SUB-002', 'Subserie B', 'Subserie relacionada', 'SER-002');
-
-insert into public.series_vinculacion (serie_id, entidad)
-select id, 'entidad_demo' from public.series_carga limit 1;
-
-insert into public.subseries_vinculacion (subserie_id, entidad)
-select id, 'entidad_demo' from public.subseries_carga limit 1;
+  ('Entidad demo', 'no', 'SER-001', 'Actividad demo', '5 años'),
+  ('Entidad demo', 'sí', 'SER-002', 'Actividad secundaria', '10 años');

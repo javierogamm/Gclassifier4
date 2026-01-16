@@ -1,39 +1,42 @@
 # Modelo de datos (resumen simple)
 
-El esquema usa cuatro tablas principales en el esquema `public`:
-
-## series_carga
-
-- **id** (uuid, PK)
-- **codigo** (text)
-- **nombre** (text)
-- **descripcion** (text)
-- **created_at** (timestamptz)
+El esquema usa dos tablas principales en el esquema `public`:
 
 ## series_vinculacion
 
 - **id** (uuid, PK)
-- **serie_id** (uuid, FK → series_carga.id)
-- **entidad** (text)
+- **nombre_entidad** (text)
+- **sobrescribir** (text)
+- **cod** (text)
+- **actividad** (text)
+- **plazos** (text)
 - **created_at** (timestamptz)
 
-## subseries_carga
+## series_carga
 
 - **id** (uuid, PK)
-- **codigo** (text)
-- **nombre** (text)
-- **descripcion** (text)
-- **serie_codigo** (text)
+- **nombre_entidad** (text)
+- **sobrescribir** (text)
+- **posicion** (text)
+- **codigo_serie** (text)
+- **titulo_serie** (text)
+- **categoria** (text)
+- **unidad_gestora** (text)
+- **libro_oficial** (text)
+- **nivel_seguridad** (text)
+- **advertencia_seguridad** (text)
+- **sensibilidad_datos_personales** (text)
+- **nivel_confidencialidad** (text)
+- **tipo_acceso** (text)
+- **condiciones_reutilizacion** (text)
+- **codigo_causa_limitacion** (text)
+- **normativa** (text)
+- **valor_primario** (text)
+- **plazo** (text)
+- **valor_secundario** (text)
+- **dictamen** (text)
+- **documento_esencial** (text)
+- **accion_dictaminada** (text)
+- **ejecucion** (text)
+- **motivacion** (text)
 - **created_at** (timestamptz)
-
-## subseries_vinculacion
-
-- **id** (uuid, PK)
-- **subserie_id** (uuid, FK → subseries_carga.id)
-- **entidad** (text)
-- **created_at** (timestamptz)
-
-## Relaciones
-
-- `series_vinculacion.serie_id` apunta a `series_carga.id`.
-- `subseries_vinculacion.subserie_id` apunta a `subseries_carga.id`.
