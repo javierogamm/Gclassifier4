@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.7.0
+
+- Se actualizó el buscador para incluir los elementos descendientes cuando se encuentra una coincidencia.
+- Se ajustó el filtrado para que busque por cadena contenida en los campos disponibles y luego aplique la jerarquía en el cliente.
+- Se actualizó la versión visible de la app.
+
 ## v0.6.0
 
 - Se ajustó la ficha de detalles para mostrar solo posicion, codigo_serie, titulo_serie, categoria y actividad (desde Vinculación), con campos editables.
