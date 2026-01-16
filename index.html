@@ -107,6 +107,72 @@
         background: #f1f5f9;
       }
 
+      .accordion-tree {
+        display: grid;
+        gap: 12px;
+      }
+
+      .accordion-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #ffffff;
+        padding: 8px 12px;
+      }
+
+      .accordion-item summary {
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .accordion-item summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .accordion-code {
+        font-family: 'SFMono-Regular', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+      }
+
+      .accordion-title {
+        flex: 1 1 auto;
+      }
+
+      .accordion-tag {
+        background: #dbeafe;
+        color: #1d4ed8;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+      }
+
+      .accordion-content {
+        margin-top: 8px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .accordion-children {
+        padding-left: 12px;
+        border-left: 2px solid #e2e8f0;
+        display: grid;
+        gap: 12px;
+      }
+
+      .accordion-table th {
+        width: 220px;
+        text-align: left;
+        background: #f8fafc;
+        font-weight: 600;
+      }
+
       .muted {
         color: #64748b;
       }
@@ -175,7 +241,7 @@
         Frontend estático listo para Vercel con validación de entorno y ping
         real vía RPC.
       </p>
-      <p class="muted"><strong>Versión:</strong> v0.3.0</p>
+      <p class="muted"><strong>Versión:</strong> v0.4.0</p>
     </header>
 
     <div id="vercel-warning" class="warning" hidden>
@@ -192,13 +258,6 @@
       <p id="status-detail" class="muted"></p>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <button id="ping-button">Probar conexión</button>
-        <label>
-          Límite:
-          <select id="limit-select">
-            <option value="25">25</option>
-            <option value="100">100</option>
-          </select>
-        </label>
       </div>
       <div id="message" class="muted"></div>
     </section>

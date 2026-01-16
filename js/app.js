@@ -8,7 +8,6 @@ const statusTextEl = document.getElementById('status-text');
 const statusBadgeEl = document.getElementById('status-badge');
 const statusDetailEl = document.getElementById('status-detail');
 const pingButton = document.getElementById('ping-button');
-const limitSelect = document.getElementById('limit-select');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
 const resultsEl = document.getElementById('results');
@@ -158,15 +157,14 @@ async function loadRows(table, modelFilter = null) {
     return;
   }
 
-  const limit = Number(limitSelect.value || 25);
   const filterLabel = modelFilter?.label
     ? ` · Modelo: ${modelFilter.label}`
     : modelFilter?.isNull
       ? ' · Modelo: (sin modelo)'
       : '';
-  showMessage(`Consultando ${table}${filterLabel} (límite ${limit})...`, false);
+  showMessage(`Consultando ${table}${filterLabel}...`, false);
 
-  let query = supabaseClient.from(table).select('*').limit(limit);
+  let query = supabaseClient.from(table).select('*');
   if (modelFilter) {
     if (modelFilter.isNull) {
       query = query.is('modelo', null);
@@ -183,13 +181,18 @@ async function loadRows(table, modelFilter = null) {
     return;
   }
 
-  renderTable(data || []);
+  renderResults(data || []);
   showMessage(`Resultados cargados: ${data?.length || 0} filas.`, false);
 }
 
-function renderTable(rows) {
+function renderResults(rows) {
   if (!rows || rows.length === 0) {
     resultsEl.innerHTML = '<p class="muted">No hay filas para mostrar.</p>';
+    return;
+  }
+
+  if (hasHierarchyData(rows)) {
+    renderHierarchy(rows);
     return;
   }
 
@@ -208,6 +211,113 @@ function renderTable(rows) {
       <tbody>${body}</tbody>
     </table>
   `;
+}
+
+function hasHierarchyData(rows) {
+  if (!rows.length) return false;
+  const sample = rows[0];
+  return Object.prototype.hasOwnProperty.call(sample, 'codigo_serie')
+    && Object.prototype.hasOwnProperty.call(sample, 'posicion');
+}
+
+function renderHierarchy(rows) {
+  const nodesByCode = new Map();
+  rows.forEach((row) => {
+    const code = row.codigo_serie ?? '';
+    nodesByCode.set(code, { row, children: [] });
+  });
+
+  const roots = [];
+  nodesByCode.forEach((node) => {
+    const parentCode = node.row.posicion;
+    if (parentCode && nodesByCode.has(parentCode) && parentCode !== node.row.codigo_serie) {
+      nodesByCode.get(parentCode).children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  roots.sort((a, b) =>
+    String(a.row.codigo_serie || '').localeCompare(String(b.row.codigo_serie || ''), 'es', {
+      sensitivity: 'base',
+    }),
+  );
+
+  const container = document.createElement('div');
+  container.className = 'accordion-tree';
+  roots.forEach((node) => {
+    container.appendChild(renderHierarchyNode(node));
+  });
+
+  resultsEl.innerHTML = '';
+  resultsEl.appendChild(container);
+}
+
+function renderHierarchyNode(node) {
+  const details = document.createElement('details');
+  details.className = 'accordion-item';
+
+  const summary = document.createElement('summary');
+  summary.className = 'accordion-summary';
+  summary.innerHTML = `
+    <span class="accordion-code">${node.row.codigo_serie ?? ''}</span>
+    <span class="accordion-title">${getRowTitle(node.row)}</span>
+    ${node.row.categoria ? `<span class="accordion-tag">${node.row.categoria}</span>` : ''}
+  `;
+  details.appendChild(summary);
+
+  const content = document.createElement('div');
+  content.className = 'accordion-content';
+  content.appendChild(renderRowTable(node.row));
+
+  if (node.children.length) {
+    const childrenWrapper = document.createElement('div');
+    childrenWrapper.className = 'accordion-children';
+    node.children
+      .sort((a, b) =>
+        String(a.row.codigo_serie || '').localeCompare(String(b.row.codigo_serie || ''), 'es', {
+          sensitivity: 'base',
+        }),
+      )
+      .forEach((child) => {
+        childrenWrapper.appendChild(renderHierarchyNode(child));
+      });
+    content.appendChild(childrenWrapper);
+  }
+
+  details.appendChild(content);
+  return details;
+}
+
+function getRowTitle(row) {
+  return (
+    row.titulo_serie
+    || row.nombre_entidad
+    || row.sobrescribir
+    || row.actividad
+    || row.codigo_serie
+    || 'Sin título'
+  );
+}
+
+function renderRowTable(row) {
+  const columns = Object.keys(row);
+  const table = document.createElement('table');
+  table.className = 'accordion-table';
+
+  const body = document.createElement('tbody');
+  columns.forEach((column) => {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.textContent = column;
+    const td = document.createElement('td');
+    td.textContent = row[column] ?? '';
+    tr.appendChild(th);
+    tr.appendChild(td);
+    body.appendChild(tr);
+  });
+  table.appendChild(body);
+  return table;
 }
 
 function closeModelModal() {

@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.4.0
+
+- Se eliminó el límite configurable de filas para cargar todos los registros disponibles en las consultas.
+- Se incorporó una vista jerárquica en formato acordeón para tablas con `codigo_serie` y `posicion`.
+- Se añadieron estilos específicos para resaltar los niveles y el detalle de cada serie.
+
 ## v0.3.0
 
 - Se añadió un modal para listar valores únicos de "modelo" y aplicar el filtro antes de consultar la tabla de carga.
