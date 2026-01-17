@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.18.0
+
+- Se eliminó la referencia a materias en la gestión de actividades y se dejó el acordeón con actividades directas.
+- Al expandir una actividad se listan las series vinculadas con código, nombre y modelo asociado desde `series_carga`.
+- Se simplificó el modal de edición para ajustar los campos de la tabla de actividades y se retiró la vista en modo tabla.
+- Se actualizó la versión visible de la app.
+
 ## v0.17.0
 
 - Se agregó control para desplegar/contraer todas las materias en actividades y alternar entre vista acordeón y modo tabla (solo actividades).
