@@ -514,6 +514,65 @@
         flex-wrap: wrap;
         align-items: center;
       }
+
+      .view-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+
+      .activities-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+
+      .activities-form label {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .activities-form input {
+        border-radius: 4px;
+        border: 1px solid #5b6b84;
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
+      .activities-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      .activities-table th,
+      .activities-table td {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 8px;
+        text-align: left;
+      }
+
+      .activities-table input {
+        width: 100%;
+        border-radius: 4px;
+        border: 1px solid #5b6b84;
+        padding: 6px 8px;
+        font-size: 14px;
+      }
+
+      .activities-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
     </style>
     <script src="/api/env.js"></script>
   </head>
@@ -531,7 +590,7 @@
           </div>
           <p id="status-detail" class="muted"></p>
           <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.13.0</p>
+          <p class="muted"><strong>Versión:</strong> v0.14.0</p>
         </div>
       </header>
 
@@ -542,37 +601,73 @@
 
       <button id="ping-button" class="secondary" type="button" hidden>Probar conexión</button>
 
-      <section class="card">
-        <h2>Gestión de cuadros</h2>
-        <div id="catalog" class="grid"></div>
-      </section>
+      <main id="cuadros-view">
+        <section class="card">
+          <h2>Gestión de cuadros</h2>
+          <div id="catalog" class="grid"></div>
+        </section>
 
-      <section class="card">
-        <div class="results-header">
-          <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
-          <button id="open-create-modal" type="button">Crear elemento</button>
+        <section class="card">
+          <div class="results-header">
+            <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
+            <button id="open-create-modal" type="button">Crear elemento</button>
+          </div>
+          <form id="filter-form" class="filters">
+            <label>
+              Buscar código_serie
+              <input id="filter-codigo-serie" type="search" placeholder="Ej: SER-001" />
+            </label>
+            <label>
+              Buscar título de serie
+              <input id="filter-titulo-serie" type="search" placeholder="Ej: Gestión" />
+            </label>
+            <label>
+              Buscar categoría
+              <input id="filter-categoria" type="search" placeholder="Ej: Documentación" />
+            </label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="submit">Aplicar filtros</button>
+              <button type="button" id="clear-filters" class="secondary">Limpiar</button>
+              <button type="button" id="expand-all" class="secondary">Desplegar todo</button>
+              <button type="button" id="collapse-all" class="secondary">Contraer todo</button>
+            </div>
+          </form>
+          <div id="results"></div>
+        </section>
+      </main>
+
+      <section id="activities-view" class="card" hidden>
+        <div class="view-toggle">
+          <h2>Gestión de actividades</h2>
+          <button id="back-to-cuadros" class="secondary" type="button">
+            Volver a gestión de cuadros
+          </button>
         </div>
-        <form id="filter-form" class="filters">
+        <div id="activities-message" class="muted"></div>
+        <form id="activity-create-form" class="activities-form">
           <label>
-            Buscar código_serie
-            <input id="filter-codigo-serie" type="search" placeholder="Ej: SER-001" />
+            Código de serie
+            <input id="activity-create-codigo" type="text" placeholder="Ej: SER-001" required />
           </label>
           <label>
-            Buscar título de serie
-            <input id="filter-titulo-serie" type="search" placeholder="Ej: Gestión" />
+            Actividad
+            <input id="activity-create-nombre" type="text" placeholder="Ej: Gestión" required />
           </label>
-          <label>
-            Buscar categoría
-            <input id="filter-categoria" type="search" placeholder="Ej: Documentación" />
-          </label>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button type="submit">Aplicar filtros</button>
-            <button type="button" id="clear-filters" class="secondary">Limpiar</button>
-            <button type="button" id="expand-all" class="secondary">Desplegar todo</button>
-            <button type="button" id="collapse-all" class="secondary">Contraer todo</button>
+          <div class="activities-actions">
+            <button type="submit">Guardar actividad</button>
+            <span id="activity-create-status" class="form-status"></span>
           </div>
         </form>
-        <div id="results"></div>
+        <table class="activities-table">
+          <thead>
+            <tr>
+              <th>Código de serie</th>
+              <th>Actividad</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="activities-table-body"></tbody>
+        </table>
       </section>
 
       <div id="model-modal" class="modal" hidden>

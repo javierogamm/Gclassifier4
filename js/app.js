@@ -46,6 +46,15 @@ const detailDrawerBodyEl = document.getElementById('detail-drawer-body');
 const detailDrawerCloseEl = document.getElementById('detail-drawer-close');
 const detailDrawerSaveEl = document.getElementById('detail-drawer-save');
 const detailDrawerStatusEl = document.getElementById('detail-drawer-status');
+const cuadrosViewEl = document.getElementById('cuadros-view');
+const activitiesViewEl = document.getElementById('activities-view');
+const backToCuadrosButton = document.getElementById('back-to-cuadros');
+const activitiesMessageEl = document.getElementById('activities-message');
+const activityCreateFormEl = document.getElementById('activity-create-form');
+const activityCreateCodigoEl = document.getElementById('activity-create-codigo');
+const activityCreateNombreEl = document.getElementById('activity-create-nombre');
+const activityCreateStatusEl = document.getElementById('activity-create-status');
+const activitiesTableBodyEl = document.getElementById('activities-table-body');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -63,20 +72,15 @@ let pendingModelTable = null;
 let activeTable = null;
 let activeModelFilter = null;
 let activeRows = [];
-
-function getVinculacionTableForActive() {
-  if (!activeCatalog?.entities || !activeTable) return null;
-  const entity = activeCatalog.entities.find((item) => item?.carga?.table === activeTable);
-  return entity?.vinculacion?.table ?? null;
-}
+let actividadesRows = [];
 
 async function fetchActividadForCodigoSerie(codigoSerie) {
   if (!supabaseClient || !codigoSerie) return null;
-  const vinculacionTable = getVinculacionTableForActive();
-  if (!vinculacionTable) return null;
+  const actividadesTable = getActividadesTableForActive();
+  if (!actividadesTable) return null;
 
   const { data, error } = await supabaseClient
-    .from(vinculacionTable)
+    .from(actividadesTable)
     .select('actividad')
     .eq('cod', codigoSerie)
     .limit(1);
@@ -86,6 +90,12 @@ async function fetchActividadForCodigoSerie(codigoSerie) {
   }
 
   return data?.[0]?.actividad ?? null;
+}
+
+function getActividadesTableForActive() {
+  if (!activeCatalog?.entities || !activeTable) return null;
+  const entity = activeCatalog.entities.find((item) => item?.carga?.table === activeTable);
+  return entity?.actividades?.table ?? null;
 }
 
 function setStatus(state, text, detail, badge = 'ENV') {
@@ -104,6 +114,17 @@ function showMessage(message, isError = false) {
   }
   messageEl.textContent = message;
   messageEl.className = isError ? 'error' : 'muted';
+}
+
+function showActivitiesMessage(message, isError = false) {
+  if (!activitiesMessageEl) return;
+  if (!message) {
+    activitiesMessageEl.textContent = '';
+    activitiesMessageEl.className = 'muted';
+    return;
+  }
+  activitiesMessageEl.textContent = message;
+  activitiesMessageEl.className = isError ? 'error' : 'muted';
 }
 
 function isPlaceholder(value) {
@@ -277,8 +298,14 @@ function renderCatalog(entities) {
         >
           Seleccionar cuadro
         </button>
-        <button class="secondary" type="button">Traducciones</button>
-        <button class="secondary" type="button">Actividades</button>
+        <button
+          class="secondary"
+          type="button"
+          data-actividades-table="${entity.carga.table}"
+          data-label="${entity.label}"
+        >
+          Actividades
+        </button>
         <button class="secondary" type="button">Exportar CSV RPA</button>
       </div>
     `;
@@ -291,6 +318,15 @@ function renderCatalog(entities) {
       const table = target.getAttribute('data-table');
       const label = target.getAttribute('data-label');
       await openModelModal(table, label);
+    });
+  });
+
+  catalogEl.querySelectorAll('button[data-actividades-table]').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      const target = event.currentTarget;
+      const table = target.getAttribute('data-actividades-table');
+      const label = target.getAttribute('data-label');
+      await openActivitiesView(table, label);
     });
   });
 }
@@ -839,6 +875,164 @@ function closeDetailDrawer() {
   detailDrawerEl.hidden = true;
 }
 
+function updateActivityCreateStatus(message, isError = false) {
+  if (!activityCreateStatusEl) return;
+  activityCreateStatusEl.textContent = message || '';
+  activityCreateStatusEl.className = isError ? 'form-status error' : 'form-status';
+}
+
+function showActivitiesView() {
+  if (cuadrosViewEl) {
+    cuadrosViewEl.hidden = true;
+  }
+  if (activitiesViewEl) {
+    activitiesViewEl.hidden = false;
+  }
+}
+
+function showCuadrosView() {
+  if (activitiesViewEl) {
+    activitiesViewEl.hidden = true;
+  }
+  if (cuadrosViewEl) {
+    cuadrosViewEl.hidden = false;
+  }
+}
+
+async function loadActividades(table) {
+  if (!supabaseClient) {
+    showActivitiesMessage('Configura Supabase antes de consultar actividades.', true);
+    return;
+  }
+  if (!table) {
+    showActivitiesMessage('No hay tabla de actividades configurada.', true);
+    return;
+  }
+
+  showActivitiesMessage(`Consultando ${table}...`, false);
+  const { data, error } = await supabaseClient.from(table).select('*');
+  if (error) {
+    showActivitiesMessage(mapSupabaseError(error), true);
+    activitiesTableBodyEl.innerHTML = '';
+    return;
+  }
+  actividadesRows = data || [];
+  renderActividadesTable();
+  showActivitiesMessage(`Actividades cargadas: ${actividadesRows.length}`, false);
+}
+
+function renderActividadesTable() {
+  if (!activitiesTableBodyEl) return;
+  activitiesTableBodyEl.innerHTML = '';
+  if (!actividadesRows.length) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="3" class="muted">No hay actividades registradas.</td>';
+    activitiesTableBodyEl.appendChild(row);
+    return;
+  }
+
+  actividadesRows.forEach((row) => {
+    const codigoSerie = row?.cod ?? row?.codigo_serie ?? '';
+    const actividad = row?.actividad ?? '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${codigoSerie}</td>
+      <td><input type="text" value="${actividad ?? ''}" data-field="actividad" /></td>
+      <td>
+        <button type="button" class="secondary" data-action="save">Guardar</button>
+      </td>
+    `;
+    tr.dataset.identityField = row?.id !== undefined && row?.id !== null ? 'id' : 'cod';
+    tr.dataset.identityValue =
+      row?.id !== undefined && row?.id !== null ? row.id : codigoSerie;
+    const input = tr.querySelector('input[data-field="actividad"]');
+    if (input) {
+      input.dataset.original = actividad ?? '';
+    }
+    const saveButton = tr.querySelector('button[data-action="save"]');
+    saveButton.addEventListener('click', async () => {
+      await saveActividadRow(tr);
+    });
+    activitiesTableBodyEl.appendChild(tr);
+  });
+}
+
+async function saveActividadRow(rowEl) {
+  if (!supabaseClient) {
+    showActivitiesMessage('Configura Supabase antes de guardar.', true);
+    return;
+  }
+  const table = getActividadesTableForActive();
+  if (!table) {
+    showActivitiesMessage('No hay tabla de actividades configurada.', true);
+    return;
+  }
+  const identityField = rowEl.dataset.identityField;
+  const identityValue = rowEl.dataset.identityValue;
+  const input = rowEl.querySelector('input[data-field="actividad"]');
+  if (!identityField || !input) return;
+  const currentValue = normalizeInputValue(input.value);
+  const originalValue = normalizeInputValue(input.dataset.original ?? '');
+  if (currentValue === originalValue) {
+    showActivitiesMessage('No hay cambios para guardar.', false);
+    return;
+  }
+  const { error } = await supabaseClient
+    .from(table)
+    .update({ actividad: currentValue })
+    .eq(identityField, identityValue);
+  if (error) {
+    showActivitiesMessage(mapSupabaseError(error), true);
+    return;
+  }
+  input.dataset.original = input.value;
+  showActivitiesMessage('Actividad actualizada.', false);
+}
+
+async function handleActivityCreateSubmit(event) {
+  event.preventDefault();
+  if (!supabaseClient) {
+    updateActivityCreateStatus('Configura Supabase antes de guardar.', true);
+    return;
+  }
+  const table = getActividadesTableForActive();
+  if (!table) {
+    updateActivityCreateStatus('No hay tabla de actividades configurada.', true);
+    return;
+  }
+  const codigoSerie = normalizeInputValue(activityCreateCodigoEl.value);
+  const actividad = normalizeInputValue(activityCreateNombreEl.value);
+  if (!codigoSerie || !actividad) {
+    updateActivityCreateStatus('Completa código de serie y actividad.', true);
+    return;
+  }
+  updateActivityCreateStatus('Guardando actividad...', false);
+  const { error } = await supabaseClient
+    .from(table)
+    .insert([{ cod: codigoSerie, actividad }]);
+  if (error) {
+    updateActivityCreateStatus(mapSupabaseError(error), true);
+    return;
+  }
+  updateActivityCreateStatus('Actividad guardada.', false);
+  activityCreateCodigoEl.value = '';
+  activityCreateNombreEl.value = '';
+  await loadActividades(table);
+}
+
+async function openActivitiesView(table, label) {
+  if (!table) {
+    showMessage('No hay tabla de actividades configurada para este cuadro.', true);
+    return;
+  }
+  activeTable = table;
+  activeModelFilter = null;
+  showActivitiesView();
+  updateActivityCreateStatus('', false);
+  showActivitiesMessage(`Gestión de actividades para ${label}.`, false);
+  await loadActividades(getActividadesTableForActive());
+}
+
 async function saveDetailChanges() {
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de guardar cambios.', true);
@@ -881,9 +1075,9 @@ async function saveDetailChanges() {
   });
 
   const hasMainUpdates = Object.keys(updates).length > 0;
-  const vinculacionTable = getVinculacionTableForActive();
+  const actividadesTable = getActividadesTableForActive();
   const codigoSerie = detailDrawerEl.dataset.codigoSerie;
-  const shouldUpdateActividad = actividadChanged && vinculacionTable && codigoSerie;
+  const shouldUpdateActividad = actividadChanged && actividadesTable && codigoSerie;
 
   if (!hasMainUpdates && !shouldUpdateActividad) {
     updateDetailStatus('No hay cambios para guardar.', false);
@@ -916,7 +1110,7 @@ async function saveDetailChanges() {
 
     if (shouldUpdateActividad) {
       const { error } = await supabaseClient
-        .from(vinculacionTable)
+        .from(actividadesTable)
         .update({ actividad: actividadUpdate })
         .eq('cod', codigoSerie);
       if (error) {
@@ -1004,6 +1198,10 @@ detailDrawerEl.addEventListener('click', (event) => {
     closeDetailDrawer();
   }
 });
+backToCuadrosButton.addEventListener('click', () => {
+  showCuadrosView();
+});
+activityCreateFormEl.addEventListener('submit', handleActivityCreateSubmit);
 modelModalEl.addEventListener('click', (event) => {
   if (event.target === modelModalEl) {
     closeModelModal();

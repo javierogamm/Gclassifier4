@@ -47,6 +47,10 @@ export const DEFAULT_CDC_CATALOG = {
           'created_at',
         ],
       },
+      actividades: {
+        table: 'Actividades',
+        fields: ['id', 'cod', 'actividad', 'created_at'],
+      },
     },
   ],
 };
