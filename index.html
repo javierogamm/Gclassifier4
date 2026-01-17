@@ -248,26 +248,28 @@
       .result-summary {
         display: grid;
         gap: 4px;
+        flex: 1;
+        min-width: 0;
       }
 
       .result-title {
         display: flex;
-        align-items: baseline;
-        gap: 8px;
+        align-items: center;
+        gap: 10px;
         flex-wrap: wrap;
+        font-size: var(--title-size);
+        font-weight: 600;
+        width: 100%;
       }
 
       .toggle-icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 18px;
-        height: 18px;
-        border-radius: 999px;
-        border: 1px solid #94a3b8;
+        margin-left: auto;
         color: #0f172a;
         font-weight: 700;
-        font-size: 12px;
+        font-size: 20px;
         flex-shrink: 0;
       }
 
@@ -285,20 +287,24 @@
         background: #dbeafe;
         border-radius: 999px;
         padding: 2px 8px;
-        font-size: 12px;
+        font-size: 0.75em;
       }
 
       .codigo-serie-badge {
-        font-weight: 600;
+        font-weight: 700;
         color: #0f172a;
-        background: #e2e8f0;
-        border-radius: 999px;
-        padding: 2px 8px;
-        font-size: 12px;
+        background: transparent;
+        border-radius: 0;
+        padding: 0;
+        font-size: inherit;
+      }
+
+      .titulo-serie {
+        font-weight: 600;
       }
 
       .result-meta {
-        font-size: 13px;
+        font-size: var(--meta-size);
         color: #64748b;
         display: flex;
         flex-wrap: wrap;
@@ -325,6 +331,63 @@
 
       .result-item.series .result-body {
         background: #ffffff;
+      }
+
+      .result-item.section .titulo-serie {
+        font-weight: 700;
+      }
+
+      .result-item.series .titulo-serie {
+        font-weight: 400;
+      }
+
+      .result-item.series.has-children .titulo-serie {
+        font-style: italic;
+      }
+
+      .result-item[data-depth='0'] {
+        --title-size: 18px;
+        --meta-size: 13px;
+        --indent: 0px;
+      }
+
+      .result-item[data-depth='1'] {
+        --title-size: 16px;
+        --meta-size: 12px;
+        --indent: 12px;
+      }
+
+      .result-item[data-depth='2'] {
+        --title-size: 15px;
+        --meta-size: 12px;
+        --indent: 24px;
+      }
+
+      .result-item[data-depth='3'] {
+        --title-size: 14px;
+        --meta-size: 11px;
+        --indent: 36px;
+      }
+
+      .result-item[data-depth='4'] {
+        --title-size: 13px;
+        --meta-size: 11px;
+        --indent: 48px;
+      }
+
+      .result-item[data-depth='5'] {
+        --title-size: 12px;
+        --meta-size: 10px;
+        --indent: 60px;
+      }
+
+      .result-item {
+        margin-left: var(--indent, 0px);
+      }
+
+      .result-item[data-depth='0'] .result-title {
+        text-transform: uppercase;
+        font-weight: 700;
       }
 
       .detail-button {
@@ -459,7 +522,7 @@
           Frontend estático listo para Vercel con validación de entorno y ping
           real vía RPC.
         </p>
-        <p class="muted"><strong>Versión:</strong> v0.11.0</p>
+        <p class="muted"><strong>Versión:</strong> v0.12.0</p>
       </div>
       <div class="header-status" aria-live="polite">
         <div class="status" id="status" data-state="warning">

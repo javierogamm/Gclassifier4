@@ -449,20 +449,21 @@ function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
   const hierarchyMarkup = hierarchyLabel
     ? `<span class="hierarchy-number">${hierarchyLabel}</span>`
     : '';
+  const hasChildren = Boolean(node.children && node.children.length > 0);
 
   const details = document.createElement('details');
-  details.className = `result-item ${toneClass}`;
+  details.className = `result-item ${toneClass}${hasChildren ? ' has-children' : ''}`;
+  details.dataset.depth = depth;
   const summary = document.createElement('summary');
   summary.innerHTML = `
     <div class="result-summary">
       <div class="result-title">
-        <span class="toggle-icon" aria-hidden="true"></span>
         ${hierarchyMarkup}
         <span class="codigo-serie-badge">${codigoSerie}</span>
-        <strong>${tituloSerie}</strong>
+        <span class="titulo-serie">${tituloSerie}</span>
+        <span class="toggle-icon" aria-hidden="true"></span>
       </div>
       <div class="result-meta">
-        <span><strong>Código:</strong> ${codigoSerie}</span>
         <span><strong>Categoría:</strong> ${categoria}</span>
       </div>
     </div>
