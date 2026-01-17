@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.14.0
+
+- Se añadió la vista de Gestión de actividades con formulario de alta, tabla editable y botón para volver a la gestión de cuadros.
+- Se conectó la lectura/escritura de actividades a la nueva tabla `Actividades` en Supabase, incluyendo la ficha de detalles.
+- Se eliminó el botón de traducciones del catálogo y se añadió la navegación a actividades desde cada cuadro.
+- Se actualizó la versión visible de la app.
+
 ## v0.13.0
 
 - Se ajustó el encabezado para eliminar la descripción, mover la versión bajo el ping y actualizar el estilo general según el pantallazo.

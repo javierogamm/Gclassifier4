@@ -7,5 +7,6 @@ export function listEntities(catalog) {
     label: entity.label,
     carga: entity.carga,
     vinculacion: entity.vinculacion,
+    actividades: entity.actividades,
   }));
 }
