@@ -51,26 +51,17 @@ const activitiesViewEl = document.getElementById('activities-view');
 const backToCuadrosButton = document.getElementById('back-to-cuadros');
 const activitiesMessageEl = document.getElementById('activities-message');
 const activityCreateFormEl = document.getElementById('activity-create-form');
-const activityCreateCodigoMateriaEl = document.getElementById('activity-create-codigo-materia');
-const activityCreateNombreMateriaEl = document.getElementById('activity-create-nombre-materia');
 const activityCreateCodigoActividadEl = document.getElementById('activity-create-codigo-actividad');
 const activityCreateNombreEl = document.getElementById('activity-create-nombre');
 const activityCreateStatusEl = document.getElementById('activity-create-status');
 const activitiesAccordionEl = document.getElementById('activities-accordion');
-const activitiesTableEl = document.getElementById('activities-table');
 const activitiesExpandAllButton = document.getElementById('activities-expand-all');
 const activitiesCollapseAllButton = document.getElementById('activities-collapse-all');
-const activitiesToggleTableButton = document.getElementById('activities-toggle-table');
 const activityEditModalEl = document.getElementById('activity-edit-modal');
 const activityEditCloseEl = document.getElementById('activity-edit-close');
 const activityEditFormEl = document.getElementById('activity-edit-form');
-const activityEditCodigoMateriaEl = document.getElementById('activity-edit-codigo-materia');
-const activityEditNombreMateriaEl = document.getElementById('activity-edit-nombre-materia');
-const activityEditCodigoActividadEl = document.getElementById('activity-edit-codigo-actividad');
-const activityEditNombreEl = document.getElementById('activity-edit-nombre');
+const activityEditFieldsEl = document.getElementById('activity-edit-fields');
 const activityEditStatusEl = document.getElementById('activity-edit-status');
-const activityLinkedStatusEl = document.getElementById('activity-linked-status');
-const activityLinkedTableEl = document.getElementById('activity-linked-table');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -89,18 +80,19 @@ let activeTable = null;
 let activeModelFilter = null;
 let activeRows = [];
 let actividadesRows = [];
-let activitiesViewMode = 'accordion';
 let activityEditContext = null;
 
 const ACTIVITY_FIELD_CANDIDATES = {
-  materiaCode: ['codigo_materia', 'cod_materia', 'cod'],
-  materiaName: ['nombre_materia', 'materia', 'nombre'],
   actividadCode: ['codigo_actividad', 'cod_actividad', 'codigo'],
   actividadName: ['nombre_actividad', 'actividad', 'nombre_actividad', 'nombre'],
 };
 const LINKED_SERIES_FIELD_CANDIDATES = {
   codigoSerie: ['codigo_serie', 'cod', 'codigo'],
-  nombre: ['nombre', 'titulo_serie', 'nombre_serie'],
+  nombre: ['nombre', 'titulo_serie', 'nombre_serie', 'nombre_entidad'],
+  modelo: ['modelo', 'nombre_entidad', 'modelo_serie'],
+};
+const SERIES_CARGA_FIELD_CANDIDATES = {
+  codigoSerie: ['codigo_serie', 'cod', 'codigo'],
   modelo: ['modelo', 'nombre_entidad', 'modelo_serie'],
 };
 
@@ -163,30 +155,16 @@ function updateActivityEditStatus(message, isError = false) {
   activityEditStatusEl.className = isError ? 'form-status error' : 'form-status';
 }
 
-function updateLinkedSeriesStatus(message, isError = false) {
-  if (!activityLinkedStatusEl) return;
-  activityLinkedStatusEl.textContent = message || '';
-  activityLinkedStatusEl.className = isError ? 'error' : 'muted';
+function updateLinkedSeriesStatus(element, message, isError = false) {
+  if (!element) return;
+  element.textContent = message || '';
+  element.className = isError ? 'error' : 'muted';
 }
 
 function isPlaceholder(value) {
   if (!value) return true;
   const lower = value.toLowerCase();
   return PLACEHOLDER_PATTERNS.some((pattern) => lower.includes(pattern));
-}
-
-function setActivitiesViewMode(mode) {
-  activitiesViewMode = mode;
-  const isTable = mode === 'table';
-  if (activitiesAccordionEl) activitiesAccordionEl.hidden = isTable;
-  if (activitiesTableEl) activitiesTableEl.hidden = !isTable;
-  if (activitiesExpandAllButton) activitiesExpandAllButton.disabled = isTable;
-  if (activitiesCollapseAllButton) activitiesCollapseAllButton.disabled = isTable;
-  if (activitiesToggleTableButton) {
-    activitiesToggleTableButton.textContent = isTable
-      ? 'Ver en modo acordeón'
-      : 'Ver en modo tabla';
-  }
 }
 
 function validateConfig(env) {
@@ -991,8 +969,6 @@ function getActivityFieldMap() {
   const sampleRow = actividadesRows[0] || {};
 
   return {
-    materiaCode: pickActivityField(ACTIVITY_FIELD_CANDIDATES.materiaCode, fields, sampleRow),
-    materiaName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.materiaName, fields, sampleRow),
     actividadCode: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadCode, fields, sampleRow),
     actividadName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadName, fields, sampleRow),
   };
@@ -1000,31 +976,23 @@ function getActivityFieldMap() {
 
 function renderActividadesView() {
   renderActividadesAccordion();
-  renderActividadesTable();
-  setActivitiesViewMode(activitiesViewMode);
 }
 
 function setActivityRowDataset(rowEl, data) {
   rowEl.dataset.identityField = data.identityField;
   rowEl.dataset.identityValue = data.identityValue;
-  rowEl.dataset.materiaField = data.materiaField;
-  rowEl.dataset.materiaValue = data.materiaValue;
-  rowEl.dataset.materiaName = data.materiaName ?? '';
   rowEl.dataset.actividadField = data.actividadField;
   rowEl.dataset.actividadValue = data.actividadValue;
   rowEl.dataset.actividadName = data.actividadName ?? '';
   rowEl.dataset.nameField = data.nameField;
 }
 
-function buildActivityRowData(row, fieldMap, materiaCode, materiaName) {
+function buildActivityRowData(row, fieldMap) {
   const actividadCode = row?.[fieldMap.actividadCode] ?? '';
   const actividadName = row?.[fieldMap.actividadName] ?? '';
   const identityField = row?.id !== undefined && row?.id !== null ? 'id' : '';
   const identityValue = row?.id !== undefined && row?.id !== null ? row.id : '';
   return {
-    materiaField: fieldMap.materiaCode,
-    materiaValue: materiaCode ?? '',
-    materiaName: materiaName ?? '',
     actividadField: fieldMap.actividadCode,
     actividadValue: actividadCode ?? '',
     actividadName: actividadName ?? '',
@@ -1046,89 +1014,81 @@ function renderActividadesAccordion() {
   }
 
   const fieldMap = getActivityFieldMap();
-  const grupos = new Map();
-
-  actividadesRows.forEach((row, index) => {
-    const materiaCode = row?.[fieldMap.materiaCode] ?? '';
-    const materiaName = row?.[fieldMap.materiaName] ?? '';
-    const keyBase = `${materiaCode || 'sin-codigo'}-${materiaName || 'sin-nombre'}`;
-    const key = grupos.has(keyBase) ? `${keyBase}-${index}` : keyBase;
-    if (!grupos.has(key)) {
-      grupos.set(key, {
-        materiaCode,
-        materiaName,
-        actividades: [],
-      });
-    }
-    grupos.get(key).actividades.push(row);
-  });
-
-  Array.from(grupos.values()).forEach((grupo) => {
+  actividadesRows.forEach((row) => {
+    const rowData = buildActivityRowData(row, fieldMap);
     const details = document.createElement('details');
     details.open = false;
+    setActivityRowDataset(details, rowData);
     const summary = document.createElement('summary');
     const summaryContent = document.createElement('div');
     summaryContent.className = 'activities-summary';
     const codeSpan = document.createElement('span');
     codeSpan.className = 'code';
-    codeSpan.textContent = grupo.materiaCode || 'Sin código';
+    codeSpan.textContent = rowData.actividadValue || '—';
     const nameSpan = document.createElement('span');
     nameSpan.className = 'name';
-    nameSpan.textContent = grupo.materiaName || 'Sin nombre';
-    const countSpan = document.createElement('span');
-    countSpan.className = 'count';
-    countSpan.textContent = `${grupo.actividades.length} actividad(es)`;
+    nameSpan.textContent = rowData.actividadName || '—';
     summaryContent.appendChild(codeSpan);
     summaryContent.appendChild(document.createTextNode(' - '));
     summaryContent.appendChild(nameSpan);
-    summaryContent.appendChild(countSpan);
     summary.appendChild(summaryContent);
     details.appendChild(summary);
 
-    const list = document.createElement('div');
-    list.className = 'activities-list';
+    const content = document.createElement('div');
+    content.className = 'activity-detail';
 
-    grupo.actividades.forEach((row) => {
-      const rowData = buildActivityRowData(row, fieldMap, grupo.materiaCode, grupo.materiaName);
+    const linkedHeader = document.createElement('h4');
+    linkedHeader.textContent = 'Series vinculadas';
+    const linkedStatus = document.createElement('div');
+    linkedStatus.className = 'muted';
+    const linkedTable = document.createElement('div');
+    linkedTable.className = 'activity-linked-table';
+    linkedTable.dataset.loaded = 'false';
 
-      const rowEl = document.createElement('div');
-      rowEl.className = 'activity-row';
-      setActivityRowDataset(rowEl, rowData);
-
-      const info = document.createElement('div');
-      info.className = 'activity-row-info';
-      const codeLabel = document.createElement('span');
-      codeLabel.className = 'code';
-      codeLabel.textContent = rowData.actividadValue || '—';
-      const nameLabel = document.createElement('span');
-      nameLabel.className = 'name';
-      nameLabel.textContent = rowData.actividadName || '—';
-
-      info.appendChild(codeLabel);
-      info.appendChild(document.createTextNode(' - '));
-      info.appendChild(nameLabel);
-
-      const actions = document.createElement('div');
-      actions.className = 'activity-row-actions';
-      const editButton = document.createElement('button');
-      editButton.type = 'button';
-      editButton.className = 'secondary';
-      editButton.textContent = 'Editar';
-      editButton.addEventListener('click', () => openActivityEditModal(rowEl));
-
-      actions.appendChild(editButton);
-
-      rowEl.appendChild(info);
-      rowEl.appendChild(actions);
-      list.appendChild(rowEl);
+    const actions = document.createElement('div');
+    actions.className = 'activity-row-actions';
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'secondary';
+    editButton.textContent = 'Editar';
+    editButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openActivityEditModal(details);
     });
 
-    details.appendChild(list);
+    actions.appendChild(editButton);
+    content.appendChild(actions);
+    content.appendChild(linkedHeader);
+    content.appendChild(linkedStatus);
+    content.appendChild(linkedTable);
+
+    details.appendChild(content);
+
+    details.addEventListener('toggle', () => {
+      if (!details.open) return;
+      if (linkedTable.dataset.loaded === 'true') return;
+      loadLinkedSeriesForActivity(rowData.actividadName || rowData.actividadValue, linkedStatus, linkedTable);
+    });
+
     activitiesAccordionEl.appendChild(details);
   });
 }
 
-async function updateActividadName(context, currentValue, originalValue) {
+function getEditableActivityFields() {
+  const entity = activeCatalog?.entities?.find((item) => item?.carga?.table === activeTable);
+  const fields = entity?.actividades?.fields ?? [];
+  const sampleRow = actividadesRows[0] || {};
+  const baseFields = fields.length ? fields : Object.keys(sampleRow);
+  return baseFields.filter((field) => !['id', 'created_at'].includes(field));
+}
+
+function getActivityFieldLabel(field, fieldMap) {
+  if (field === fieldMap.actividadCode) return 'Código de actividad';
+  if (field === fieldMap.actividadName) return 'Nombre de actividad';
+  return field.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+async function updateActividadFields(context, updates) {
   if (!supabaseClient) {
     updateActivityEditStatus('Configura Supabase antes de guardar.', true);
     return false;
@@ -1138,15 +1098,15 @@ async function updateActividadName(context, currentValue, originalValue) {
     updateActivityEditStatus('No hay tabla de actividades configurada.', true);
     return false;
   }
-  if (currentValue === originalValue) {
+  if (!updates || Object.keys(updates).length === 0) {
     updateActivityEditStatus('No hay cambios para guardar.', false);
     return false;
   }
-  let query = supabaseClient.from(table).update({ [context.nameField]: currentValue });
+  let query = supabaseClient.from(table).update(updates);
   if (context.identityField && context.identityValue) {
     query = query.eq(context.identityField, context.identityValue);
-  } else if (context.materiaField && context.actividadField) {
-    query = query.eq(context.materiaField, context.materiaValue).eq(context.actividadField, context.actividadValue);
+  } else if (context.actividadField && context.actividadValue) {
+    query = query.eq(context.actividadField, context.actividadValue);
   } else {
     updateActivityEditStatus('No se pudo identificar la actividad para guardar.', true);
     return false;
@@ -1160,102 +1120,45 @@ async function updateActividadName(context, currentValue, originalValue) {
   return true;
 }
 
-function renderActividadesTable() {
-  if (!activitiesTableEl) return;
-  activitiesTableEl.innerHTML = '';
-  if (!actividadesRows.length) {
-    const emptyMessage = document.createElement('div');
-    emptyMessage.className = 'muted';
-    emptyMessage.textContent = 'No hay actividades registradas.';
-    activitiesTableEl.appendChild(emptyMessage);
-    return;
+function updateActivityRowDisplay(rowEl, updates, fieldMap) {
+  const details = rowEl.closest('details');
+  if (updates[fieldMap.actividadName] !== undefined) {
+    rowEl.dataset.actividadName = updates[fieldMap.actividadName] ?? '';
+    const nameLabel = details?.querySelector('.activities-summary .name');
+    if (nameLabel) nameLabel.textContent = updates[fieldMap.actividadName] || '—';
   }
-
-  const fieldMap = getActivityFieldMap();
-  const table = document.createElement('table');
-  table.className = 'data-table';
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  ['Código de actividad', 'Nombre de actividad', 'Acciones'].forEach((label) => {
-    const th = document.createElement('th');
-    th.textContent = label;
-    headerRow.appendChild(th);
-  });
-  thead.appendChild(headerRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
-  actividadesRows.forEach((row) => {
-    const materiaCode = row?.[fieldMap.materiaCode] ?? '';
-    const materiaName = row?.[fieldMap.materiaName] ?? '';
-    const rowData = buildActivityRowData(row, fieldMap, materiaCode, materiaName);
-    const tr = document.createElement('tr');
-    tr.className = 'activity-row';
-    setActivityRowDataset(tr, rowData);
-
-    const codeCell = document.createElement('td');
-    codeCell.textContent = rowData.actividadValue || '—';
-    const nameCell = document.createElement('td');
-    nameCell.textContent = rowData.actividadName || '—';
-    nameCell.className = 'activity-name';
-    const actionCell = document.createElement('td');
-    const editButton = document.createElement('button');
-    editButton.type = 'button';
-    editButton.className = 'secondary';
-    editButton.textContent = 'Editar';
-    editButton.addEventListener('click', () => openActivityEditModal(tr));
-    actionCell.appendChild(editButton);
-
-    tr.appendChild(codeCell);
-    tr.appendChild(nameCell);
-    tr.appendChild(actionCell);
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-  activitiesTableEl.appendChild(table);
+  if (updates[fieldMap.actividadCode] !== undefined) {
+    rowEl.dataset.actividadValue = updates[fieldMap.actividadCode] ?? '';
+    const codeLabel = details?.querySelector('.activities-summary .code');
+    if (codeLabel) codeLabel.textContent = updates[fieldMap.actividadCode] || '—';
+  }
 }
 
-function updateActivityRowDisplay(rowEl, newName) {
-  rowEl.dataset.actividadName = newName ?? '';
-  if (rowEl.tagName.toLowerCase() === 'tr') {
-    const nameCell = rowEl.querySelector('.activity-name');
-    if (nameCell) nameCell.textContent = newName || '—';
-    return;
-  }
-  const nameLabel = rowEl.querySelector('.activity-row-info .name');
-  if (nameLabel) nameLabel.textContent = newName || '—';
-}
-
-function updateActividadesRowsData(context, newName) {
-  if (!context?.nameField) return;
+function updateActividadesRowsData(context, updates) {
+  if (!context || !updates) return;
   const matchById = context.identityField && context.identityValue;
-  const matchByKeys = context.materiaField && context.actividadField;
+  const matchByKeys = context.actividadField;
   const targetIndex = actividadesRows.findIndex((row) => {
     if (matchById) {
       return row?.[context.identityField] === context.identityValue;
     }
     if (matchByKeys) {
-      return (
-        row?.[context.materiaField] === context.materiaValue &&
-        row?.[context.actividadField] === context.actividadValue
-      );
+      return row?.[context.actividadField] === context.actividadValue;
     }
     return false;
   });
   if (targetIndex >= 0) {
-    actividadesRows[targetIndex][context.nameField] = newName;
+    Object.entries(updates).forEach(([key, value]) => {
+      actividadesRows[targetIndex][key] = value;
+    });
   }
 }
 
 function openActivityEditModal(rowEl) {
-  if (!activityEditModalEl || !activityEditNombreEl) return;
+  if (!activityEditModalEl || !activityEditFieldsEl) return;
   const context = {
     identityField: rowEl.dataset.identityField,
     identityValue: rowEl.dataset.identityValue,
-    materiaField: rowEl.dataset.materiaField,
-    materiaValue: rowEl.dataset.materiaValue,
-    materiaName: rowEl.dataset.materiaName ?? '',
     actividadField: rowEl.dataset.actividadField,
     actividadValue: rowEl.dataset.actividadValue,
     actividadName: rowEl.dataset.actividadName ?? '',
@@ -1263,14 +1166,31 @@ function openActivityEditModal(rowEl) {
     rowEl,
   };
   activityEditContext = context;
-  if (activityEditCodigoMateriaEl) activityEditCodigoMateriaEl.value = context.materiaValue || '';
-  if (activityEditNombreMateriaEl) activityEditNombreMateriaEl.value = context.materiaName || '';
-  if (activityEditCodigoActividadEl) activityEditCodigoActividadEl.value = context.actividadValue || '';
-  activityEditNombreEl.value = context.actividadName || '';
-  activityEditNombreEl.dataset.original = context.actividadName || '';
+  activityEditFieldsEl.innerHTML = '';
+  const fieldMap = getActivityFieldMap();
+  const editableFields = getEditableActivityFields();
+  const rowData = actividadesRows.find((row) => {
+    if (context.identityField && context.identityValue) {
+      return row?.[context.identityField] === context.identityValue;
+    }
+    return row?.[context.actividadField] === context.actividadValue;
+  }) || {};
+  editableFields.forEach((field) => {
+    const label = document.createElement('label');
+    label.textContent = getActivityFieldLabel(field, fieldMap);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = field;
+    input.value = rowData?.[field] ?? '';
+    input.dataset.original = input.value;
+    if (field === fieldMap.actividadName) {
+      input.required = true;
+    }
+    label.appendChild(input);
+    activityEditFieldsEl.appendChild(label);
+  });
   updateActivityEditStatus('', false);
   activityEditModalEl.hidden = false;
-  loadLinkedSeries(context.actividadName || context.actividadValue);
 }
 
 function closeActivityEditModal() {
@@ -1282,20 +1202,47 @@ function closeActivityEditModal() {
 async function handleActivityEditSubmit(event) {
   event.preventDefault();
   if (!activityEditContext) return;
-  const currentValue = normalizeInputValue(activityEditNombreEl.value);
-  const originalValue = normalizeInputValue(activityEditNombreEl.dataset.original ?? '');
-  if (!currentValue) {
-    updateActivityEditStatus('El nombre de la actividad es obligatorio.', true);
+  const inputs = Array.from(activityEditFieldsEl.querySelectorAll('input[name]'));
+  const updates = {};
+  const missingRequired = inputs.some((input) => input.required && !normalizeInputValue(input.value));
+  if (missingRequired) {
+    updateActivityEditStatus('Completa los campos obligatorios antes de guardar.', true);
+    return;
+  }
+  inputs.forEach((input) => {
+    const currentValue = normalizeInputValue(input.value);
+    const originalValue = normalizeInputValue(input.dataset.original ?? '');
+    if (currentValue !== originalValue) {
+      updates[input.name] = currentValue;
+    }
+  });
+  if (Object.keys(updates).length === 0) {
+    updateActivityEditStatus('No hay cambios para guardar.', false);
     return;
   }
   updateActivityEditStatus('Guardando cambios...', false);
-  const saved = await updateActividadName(activityEditContext, currentValue, originalValue);
+  const saved = await updateActividadFields(activityEditContext, updates);
   if (!saved) return;
-  activityEditNombreEl.dataset.original = currentValue;
-  updateActivityRowDisplay(activityEditContext.rowEl, currentValue);
-  updateActividadesRowsData(activityEditContext, currentValue);
-  const targetValue = currentValue || activityEditContext.actividadValue;
-  loadLinkedSeries(targetValue);
+  inputs.forEach((input) => {
+    if (updates[input.name] !== undefined) {
+      input.dataset.original = input.value;
+    }
+  });
+  const fieldMap = getActivityFieldMap();
+  updateActivityRowDisplay(activityEditContext.rowEl, updates, fieldMap);
+  if (updates[fieldMap.actividadName] !== undefined) {
+    const details = activityEditContext.rowEl.closest('details');
+    const linkedTable = details?.querySelector('.activity-linked-table');
+    if (linkedTable) {
+      linkedTable.dataset.loaded = 'false';
+      linkedTable.innerHTML = '';
+      if (details?.open) {
+        const statusEl = details.querySelector('.activity-detail .muted');
+        loadLinkedSeriesForActivity(updates[fieldMap.actividadName], statusEl, linkedTable);
+      }
+    }
+  }
+  updateActividadesRowsData(activityEditContext, updates);
 }
 
 function getLinkedSeriesFieldMap(rows) {
@@ -1303,21 +1250,27 @@ function getLinkedSeriesFieldMap(rows) {
   return {
     codigoSerie: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.codigoSerie, Object.keys(sampleRow), sampleRow),
     nombre: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.nombre, Object.keys(sampleRow), sampleRow),
-    modelo: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.modelo, Object.keys(sampleRow), sampleRow),
   };
 }
 
-function renderLinkedSeriesTable(rows) {
-  if (!activityLinkedTableEl) return;
-  activityLinkedTableEl.innerHTML = '';
+function getSeriesCargaFieldMap(rows) {
+  const sampleRow = rows?.[0] ?? {};
+  return {
+    codigoSerie: pickActivityField(SERIES_CARGA_FIELD_CANDIDATES.codigoSerie, Object.keys(sampleRow), sampleRow),
+    modelo: pickActivityField(SERIES_CARGA_FIELD_CANDIDATES.modelo, Object.keys(sampleRow), sampleRow),
+  };
+}
+
+function renderLinkedSeriesTable(rows, tableEl) {
+  if (!tableEl) return;
+  tableEl.innerHTML = '';
   if (!rows?.length) {
     const empty = document.createElement('div');
     empty.className = 'muted';
     empty.textContent = 'No hay series vinculadas.';
-    activityLinkedTableEl.appendChild(empty);
+    tableEl.appendChild(empty);
     return;
   }
-  const fieldMap = getLinkedSeriesFieldMap(rows);
   const table = document.createElement('table');
   table.className = 'data-table';
   const thead = document.createElement('thead');
@@ -1334,43 +1287,82 @@ function renderLinkedSeriesTable(rows) {
   rows.forEach((row) => {
     const tr = document.createElement('tr');
     const codigoCell = document.createElement('td');
-    codigoCell.textContent = row?.[fieldMap.codigoSerie] ?? '—';
+    codigoCell.textContent = row?.codigo ?? '—';
     const nombreCell = document.createElement('td');
-    nombreCell.textContent = row?.[fieldMap.nombre] ?? '—';
+    nombreCell.textContent = row?.nombre ?? '—';
     const modeloCell = document.createElement('td');
-    modeloCell.textContent = row?.[fieldMap.modelo] ?? '—';
+    modeloCell.textContent = row?.modelo ?? '—';
     tr.appendChild(codigoCell);
     tr.appendChild(nombreCell);
     tr.appendChild(modeloCell);
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
-  activityLinkedTableEl.appendChild(table);
+  tableEl.appendChild(table);
 }
 
-async function loadLinkedSeries(actividadValue) {
+async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
   if (!supabaseClient) {
-    updateLinkedSeriesStatus('Configura Supabase antes de consultar series vinculadas.', true);
-    renderLinkedSeriesTable([]);
+    updateLinkedSeriesStatus(statusEl, 'Configura Supabase antes de consultar series vinculadas.', true);
+    renderLinkedSeriesTable([], tableEl);
     return;
   }
   if (!actividadValue) {
-    updateLinkedSeriesStatus('No se pudo identificar la actividad para vinculación.', true);
-    renderLinkedSeriesTable([]);
+    updateLinkedSeriesStatus(statusEl, 'No se pudo identificar la actividad para vinculación.', true);
+    renderLinkedSeriesTable([], tableEl);
     return;
   }
-  updateLinkedSeriesStatus('Consultando series vinculadas...', false);
+  updateLinkedSeriesStatus(statusEl, 'Consultando series vinculadas...', false);
   const { data, error } = await supabaseClient
     .from('series_vinculacion')
     .select('*')
     .eq('actividad', actividadValue);
   if (error) {
-    updateLinkedSeriesStatus(mapSupabaseError(error), true);
-    renderLinkedSeriesTable([]);
+    updateLinkedSeriesStatus(statusEl, mapSupabaseError(error), true);
+    renderLinkedSeriesTable([], tableEl);
     return;
   }
-  updateLinkedSeriesStatus(`Series vinculadas: ${data?.length ?? 0}`, false);
-  renderLinkedSeriesTable(data || []);
+  if (!data?.length) {
+    updateLinkedSeriesStatus(statusEl, 'Series vinculadas: 0', false);
+    renderLinkedSeriesTable([], tableEl);
+    if (tableEl) tableEl.dataset.loaded = 'true';
+    return;
+  }
+
+  const vinculacionMap = getLinkedSeriesFieldMap(data);
+  const codes = Array.from(
+    new Set(
+      data
+        .map((row) => row?.[vinculacionMap.codigoSerie])
+        .filter((codigo) => codigo && String(codigo).trim() !== '')
+    )
+  );
+
+  let cargaRows = [];
+  if (codes.length) {
+    const { data: cargaData, error: cargaError } = await supabaseClient
+      .from('series_carga')
+      .select('*')
+      .in('codigo_serie', codes);
+    if (!cargaError) {
+      cargaRows = cargaData || [];
+    }
+  }
+
+  const cargaMap = getSeriesCargaFieldMap(cargaRows);
+  const cargaByCode = new Map(
+    cargaRows.map((row) => [row?.[cargaMap.codigoSerie], row?.[cargaMap.modelo]])
+  );
+
+  const mergedRows = data.map((row) => ({
+    codigo: row?.[vinculacionMap.codigoSerie] ?? '—',
+    nombre: row?.[vinculacionMap.nombre] ?? '—',
+    modelo: cargaByCode.get(row?.[vinculacionMap.codigoSerie]) ?? '—',
+  }));
+
+  updateLinkedSeriesStatus(statusEl, `Series vinculadas: ${mergedRows.length}`, false);
+  renderLinkedSeriesTable(mergedRows, tableEl);
+  if (tableEl) tableEl.dataset.loaded = 'true';
 }
 
 async function handleActivityCreateSubmit(event) {
@@ -1384,32 +1376,24 @@ async function handleActivityCreateSubmit(event) {
     updateActivityCreateStatus('No hay tabla de actividades configurada.', true);
     return;
   }
-  const codigoMateria = normalizeInputValue(activityCreateCodigoMateriaEl.value);
-  const nombreMateria = normalizeInputValue(activityCreateNombreMateriaEl.value);
   const codigoActividad = normalizeInputValue(activityCreateCodigoActividadEl.value);
   const actividadNombre = normalizeInputValue(activityCreateNombreEl.value);
-  if (!codigoMateria || !codigoActividad || !actividadNombre) {
-    updateActivityCreateStatus('Completa códigos de materia/actividad y nombre.', true);
+  if (!codigoActividad || !actividadNombre) {
+    updateActivityCreateStatus('Completa código y nombre de la actividad.', true);
     return;
   }
   const fieldMap = getActivityFieldMap();
   updateActivityCreateStatus('Guardando actividad...', false);
   const payload = {
-    [fieldMap.materiaCode]: codigoMateria,
     [fieldMap.actividadCode]: codigoActividad,
     [fieldMap.actividadName]: actividadNombre,
   };
-  if (nombreMateria) {
-    payload[fieldMap.materiaName] = nombreMateria;
-  }
   const { error } = await supabaseClient.from(table).insert([payload]);
   if (error) {
     updateActivityCreateStatus(mapSupabaseError(error), true);
     return;
   }
   updateActivityCreateStatus('Actividad guardada.', false);
-  activityCreateCodigoMateriaEl.value = '';
-  activityCreateNombreMateriaEl.value = '';
   activityCreateCodigoActividadEl.value = '';
   activityCreateNombreEl.value = '';
   await loadActividades(table);
@@ -1535,7 +1519,6 @@ function init() {
   const env = window.ENV;
 
   updateResultsTitle(null, 0);
-  setActivitiesViewMode('accordion');
 
   if (!env) {
     vercelWarningEl.hidden = false;
@@ -1612,11 +1595,6 @@ if (activitiesCollapseAllButton) {
     activitiesAccordionEl.querySelectorAll('details').forEach((detail) => {
       detail.open = false;
     });
-  });
-}
-if (activitiesToggleTableButton) {
-  activitiesToggleTableButton.addEventListener('click', () => {
-    setActivitiesViewMode(activitiesViewMode === 'accordion' ? 'table' : 'accordion');
   });
 }
 if (activityEditCloseEl) {

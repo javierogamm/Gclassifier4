@@ -710,7 +710,7 @@
           </div>
           <p id="status-detail" class="muted"></p>
           <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.17.0</p>
+          <p class="muted"><strong>Versión:</strong> v0.18.0</p>
         </div>
       </header>
 
@@ -764,22 +764,13 @@
           </button>
         </div>
         <div id="activities-message" class="muted"></div>
-        <div class="activities-toolbar">
+          <div class="activities-toolbar">
           <div class="activities-buttons">
             <button id="activities-expand-all" class="secondary" type="button">Desplegar todo</button>
             <button id="activities-collapse-all" class="secondary" type="button">Contraer todo</button>
           </div>
-          <button id="activities-toggle-table" class="secondary" type="button">Ver en modo tabla</button>
         </div>
         <form id="activity-create-form" class="activities-form">
-          <label>
-            Código de materia
-            <input id="activity-create-codigo-materia" type="text" placeholder="Ej: MAT-001" required />
-          </label>
-          <label>
-            Nombre de materia
-            <input id="activity-create-nombre-materia" type="text" placeholder="Ej: Gestión" />
-          </label>
           <label>
             Código de actividad
             <input id="activity-create-codigo-actividad" type="text" placeholder="Ej: ACT-001" required />
@@ -794,42 +785,21 @@
           </div>
         </form>
         <div id="activities-accordion" class="activities-accordion"></div>
-        <div id="activities-table" class="activities-table" hidden></div>
       </section>
 
       <div id="activity-edit-modal" class="modal" hidden>
-        <div class="modal-content modal-wide" role="dialog" aria-modal="true" aria-labelledby="activity-edit-title">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="activity-edit-title">
           <div class="modal-header">
             <h3 id="activity-edit-title">Editar actividad</h3>
             <button id="activity-edit-close" class="secondary" type="button">Cerrar</button>
           </div>
           <form id="activity-edit-form" class="form-grid">
-            <label>
-              Código de materia
-              <input id="activity-edit-codigo-materia" type="text" disabled />
-            </label>
-            <label>
-              Nombre de materia
-              <input id="activity-edit-nombre-materia" type="text" disabled />
-            </label>
-            <label>
-              Código de actividad
-              <input id="activity-edit-codigo-actividad" type="text" disabled />
-            </label>
-            <label>
-              Nombre de actividad
-              <input id="activity-edit-nombre" type="text" required />
-            </label>
+            <div id="activity-edit-fields" class="form-grid"></div>
             <div class="form-actions">
               <button type="submit">Guardar cambios</button>
               <span id="activity-edit-status" class="form-status"></span>
             </div>
           </form>
-          <div class="linked-series">
-            <h4>Series vinculadas</h4>
-            <div id="activity-linked-status" class="muted"></div>
-            <div id="activity-linked-table"></div>
-          </div>
         </div>
       </div>
 
