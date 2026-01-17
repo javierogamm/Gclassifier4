@@ -6,14 +6,15 @@
     <title>Gestión de Cuadros de Clasficación Gestiona</title>
     <style>
       :root {
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        color: #0f172a;
-        background: #f8fafc;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: #1f2a37;
+        background: #ffffff;
       }
 
       body {
         margin: 0;
         padding: 24px;
+        background: #ffffff;
       }
 
       .app-shell {
@@ -33,22 +34,23 @@
 
       .header-main {
         display: grid;
-        gap: 8px;
+        gap: 4px;
       }
 
       .header-status {
         margin-left: auto;
         text-align: right;
         display: grid;
-        gap: 4px;
+        gap: 6px;
         min-width: 220px;
       }
 
       .card {
         background: #ffffff;
-        border-radius: 12px;
+        border-radius: 8px;
         padding: 16px;
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+        border: 1px solid #d0d7e2;
+        box-shadow: none;
         margin-bottom: 16px;
       }
 
@@ -75,22 +77,22 @@
         font-size: 12px;
         padding: 4px 8px;
         border-radius: 999px;
-        background: #e2e8f0;
+        background: #e6eaf0;
       }
 
       button {
-        background: #1d4ed8;
+        background: #5a6f86;
         color: #ffffff;
         border: none;
-        border-radius: 8px;
-        padding: 8px 12px;
+        border-radius: 4px;
+        padding: 9px 16px;
         font-weight: 600;
         cursor: pointer;
       }
 
       button.secondary {
-        background: #e2e8f0;
-        color: #0f172a;
+        background: #e6eaf0;
+        color: #1f2a37;
       }
 
       button:disabled {
@@ -119,15 +121,15 @@
       }
 
       .filters input {
-        border-radius: 8px;
-        border: 1px solid #cbd5f5;
+        border-radius: 4px;
+        border: 1px solid #5b6b84;
         padding: 8px 10px;
         font-size: 14px;
       }
 
       .entity {
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        border: 1px solid #d0d7e2;
+        border-radius: 8px;
         padding: 12px;
         display: grid;
         gap: 8px;
@@ -147,28 +149,28 @@
       }
 
       th {
-        background: #f1f5f9;
+        background: #eef2f7;
       }
 
       .muted {
-        color: #64748b;
+        color: #58677a;
       }
 
       .warning {
-        background: #fff7ed;
-        border: 1px solid #fed7aa;
+        background: #fef7e6;
+        border: 1px solid #f5d39a;
         color: #9a3412;
         padding: 12px;
-        border-radius: 10px;
+        border-radius: 8px;
         margin-bottom: 16px;
       }
 
       .error {
-        background: #fef2f2;
-        border: 1px solid #fecaca;
+        background: #fdeeee;
+        border: 1px solid #f3bcbc;
         color: #b91c1c;
         padding: 12px;
-        border-radius: 10px;
+        border-radius: 8px;
       }
 
       .modal {
@@ -220,12 +222,12 @@
 
       .results-list {
         display: grid;
-        gap: 12px;
+        gap: 6px;
       }
 
       .result-item {
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        border: 1px solid #d0d7e2;
+        border-radius: 8px;
         padding: 0;
         overflow: hidden;
         background: #ffffff;
@@ -237,7 +239,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        padding: 12px 16px;
+        padding: 10px 14px;
         cursor: pointer;
       }
 
@@ -247,7 +249,7 @@
 
       .result-summary {
         display: grid;
-        gap: 4px;
+        gap: 2px;
         flex: 1;
         min-width: 0;
       }
@@ -255,7 +257,7 @@
       .result-title {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         font-size: var(--title-size);
         font-weight: 600;
@@ -283,8 +285,8 @@
 
       .hierarchy-number {
         font-weight: 700;
-        color: #1e40af;
-        background: #dbeafe;
+        color: #1b3a57;
+        background: #d7e2f0;
         border-radius: 999px;
         padding: 2px 8px;
         font-size: 0.75em;
@@ -292,7 +294,7 @@
 
       .codigo-serie-badge {
         font-weight: 700;
-        color: #0f172a;
+        color: #1f2a37;
         background: transparent;
         border-radius: 0;
         padding: 0;
@@ -303,30 +305,32 @@
         font-weight: 600;
       }
 
-      .result-meta {
-        font-size: var(--meta-size);
-        color: #64748b;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
+      .categoria-serie {
+        font-weight: 400;
+        color: #1f2a37;
+      }
+
+      .result-separator {
+        color: #7a8796;
+        font-weight: 400;
       }
 
       .result-body {
         border-top: 1px solid #e2e8f0;
-        padding: 12px 16px;
+        padding: 10px 14px;
         background: #f8fafc;
       }
 
       .result-item.section summary {
-        background: #e2e8f0;
+        background: #eef2f7;
       }
 
       .result-item.section .result-body {
-        background: #f1f5f9;
+        background: #f4f6f9;
       }
 
       .result-item.series summary {
-        background: #f8fafc;
+        background: #ffffff;
       }
 
       .result-item.series .result-body {
@@ -386,18 +390,18 @@
       }
 
       .result-item[data-depth='0'] .result-title {
-        text-transform: uppercase;
         font-weight: 700;
+        text-transform: none;
       }
 
       .detail-button {
-        background: #0f172a;
+        background: #2f4a6d;
         color: #ffffff;
       }
 
       .child-list {
         display: grid;
-        gap: 8px;
+        gap: 4px;
       }
 
       .child-list ul {
@@ -450,8 +454,8 @@
       }
 
       .detail-input {
-        border-radius: 8px;
-        border: 1px solid #cbd5f5;
+        border-radius: 4px;
+        border: 1px solid #5b6b84;
         padding: 8px 10px;
         font-size: 14px;
       }
@@ -485,8 +489,8 @@
 
       .form-grid input,
       .form-grid select {
-        border-radius: 8px;
-        border: 1px solid #cbd5f5;
+        border-radius: 4px;
+        border: 1px solid #5b6b84;
         padding: 8px 10px;
         font-size: 14px;
       }
@@ -516,24 +520,20 @@
   <body>
     <div class="app-shell">
       <header>
-      <div class="header-main">
-        <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
-        <p class="muted">
-          Frontend estático listo para Vercel con validación de entorno y ping
-          real vía RPC.
-        </p>
-        <p class="muted"><strong>Versión:</strong> v0.12.0</p>
-      </div>
-      <div class="header-status" aria-live="polite">
-        <div class="status" id="status" data-state="warning">
-          <span id="status-icon">⚠️</span>
-          <span id="status-text">Esperando configuración</span>
-          <span class="badge" id="status-badge">ENV</span>
+        <div class="header-main">
+          <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
-        <p id="status-detail" class="muted"></p>
-        <div id="message" class="muted"></div>
-      </div>
-    </header>
+        <div class="header-status" aria-live="polite">
+          <div class="status" id="status" data-state="warning">
+            <span id="status-icon">⚠️</span>
+            <span id="status-text">Esperando configuración</span>
+            <span class="badge" id="status-badge">ENV</span>
+          </div>
+          <p id="status-detail" class="muted"></p>
+          <div id="message" class="muted"></div>
+          <p class="muted"><strong>Versión:</strong> v0.13.0</p>
+        </div>
+      </header>
 
       <div id="vercel-warning" class="warning" hidden>
       Este proyecto está diseñado para Vercel. Verifica que exista el endpoint

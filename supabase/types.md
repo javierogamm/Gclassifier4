@@ -39,4 +39,5 @@ El esquema usa dos tablas principales en el esquema `public`:
 - **accion_dictaminada** (text)
 - **ejecucion** (text)
 - **motivacion** (text)
+- **last_change** (timestamptz)
 - **created_at** (timestamptz)

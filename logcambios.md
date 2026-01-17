@@ -1,5 +1,13 @@
 # Log de cambios
 
+## v0.13.0
+
+- Se ajustó el encabezado para eliminar la descripción, mover la versión bajo el ping y actualizar el estilo general según el pantallazo.
+- Se actualizó el acordeón para separar `codigo_serie`, nombre y categoría con guiones, mostrar la categoría en la misma línea sin negrita, respetar las mayúsculas de la BDD y compactar la separación entre elementos del mismo nivel.
+- Se eliminó el mensaje de “Sin elementos asociados” cuando una serie no tiene hijos.
+- Se añadió `last_change` en la tabla `series_carga`, en el catálogo CDC y en la ficha de detalle, actualizándolo en cada creación o edición.
+- Se actualizó la versión visible de la app.
+
 ## v0.12.0
 
 - Se reubicaron los iconos +/- del acordeón al extremo derecho del título, sin borde circular y con mayor tamaño.
