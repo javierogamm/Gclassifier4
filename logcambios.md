@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.12.0
+
+- Se reubicaron los iconos +/- del acordeón al extremo derecho del título, sin borde circular y con mayor tamaño.
+- Se ajustaron tamaños, jerarquías e indentado del acordeón por nivel, incluyendo el `codigo_serie` al mismo tamaño del nombre.
+- Se aplicaron reglas tipográficas para secciones/series (negritas, mayúsculas, cursivas en series con hijos) y se eliminó el código redundante en la línea inferior.
+- Se actualizó la versión visible de la app.
+
 ## v0.11.0
 
 - Se redujo el tamaño visual general de la interfaz en un 15% para una vista más compacta.
