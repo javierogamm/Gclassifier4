@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.11.0
+
+- Se redujo el tamaño visual general de la interfaz en un 15% para una vista más compacta.
+- Se agregó la visual de despliegue con icono +/- en el acordeón y se resaltó el `codigo_serie` entre el número jerárquico y el título.
+- Se incorporaron los botones "Desplegar todo" y "Contraer todo" junto a los filtros.
+- Se actualizó la versión visible de la app.
+
 ## v0.10.0
 
 - Se ordenaron siempre los elementos raíz por `codigo_serie` y se añadió numeración jerárquica visible.

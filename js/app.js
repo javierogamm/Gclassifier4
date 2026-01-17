@@ -22,6 +22,8 @@ const filterCodigoSerieEl = document.getElementById('filter-codigo-serie');
 const filterTituloSerieEl = document.getElementById('filter-titulo-serie');
 const filterCategoriaEl = document.getElementById('filter-categoria');
 const clearFiltersButton = document.getElementById('clear-filters');
+const expandAllButton = document.getElementById('expand-all');
+const collapseAllButton = document.getElementById('collapse-all');
 const resultsTitleEl = document.getElementById('results-title');
 const openCreateModalButton = document.getElementById('open-create-modal');
 const createModalEl = document.getElementById('create-modal');
@@ -454,7 +456,9 @@ function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
   summary.innerHTML = `
     <div class="result-summary">
       <div class="result-title">
+        <span class="toggle-icon" aria-hidden="true"></span>
         ${hierarchyMarkup}
+        <span class="codigo-serie-badge">${codigoSerie}</span>
         <strong>${tituloSerie}</strong>
       </div>
       <div class="result-meta">
@@ -1031,6 +1035,20 @@ clearFiltersButton.addEventListener('click', async () => {
   } else {
     showMessage('Filtros limpiados. Selecciona un cuadro para ver resultados.', false);
   }
+});
+
+expandAllButton.addEventListener('click', () => {
+  if (!resultsEl) return;
+  resultsEl.querySelectorAll('details').forEach((detail) => {
+    detail.open = true;
+  });
+});
+
+collapseAllButton.addEventListener('click', () => {
+  if (!resultsEl) return;
+  resultsEl.querySelectorAll('details').forEach((detail) => {
+    detail.open = false;
+  });
 });
 
 init();
