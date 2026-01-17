@@ -553,6 +553,22 @@
         flex-wrap: wrap;
       }
 
+      .activities-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+
+      .activities-buttons {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
       .activities-accordion {
         display: grid;
         gap: 12px;
@@ -638,25 +654,44 @@
         color: #1f2937;
       }
 
-      .activity-row-info input {
-        border-radius: 6px;
-        border: 1px solid #cbd5f5;
-        padding: 6px 8px;
-        font-size: 14px;
-        width: min(420px, 100%);
-      }
-
-      .activity-row-info input[disabled] {
-        background: #f8fafc;
-        color: #334155;
-        border-color: #e2e8f0;
-      }
-
       .activity-row-actions {
         display: flex;
         align-items: center;
         gap: 8px;
         flex-wrap: wrap;
+      }
+
+      .activities-table {
+        overflow-x: auto;
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      .data-table th,
+      .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+      }
+
+      .data-table th {
+        background: #f8fafc;
+        color: #1f2937;
+        font-weight: 600;
+      }
+
+      .modal-content.modal-wide {
+        max-width: 880px;
+      }
+
+      .linked-series {
+        margin-top: 16px;
+        display: grid;
+        gap: 8px;
       }
     </style>
     <script src="/api/env.js"></script>
@@ -675,7 +710,7 @@
           </div>
           <p id="status-detail" class="muted"></p>
           <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.16.0</p>
+          <p class="muted"><strong>Versión:</strong> v0.17.0</p>
         </div>
       </header>
 
@@ -729,6 +764,13 @@
           </button>
         </div>
         <div id="activities-message" class="muted"></div>
+        <div class="activities-toolbar">
+          <div class="activities-buttons">
+            <button id="activities-expand-all" class="secondary" type="button">Desplegar todo</button>
+            <button id="activities-collapse-all" class="secondary" type="button">Contraer todo</button>
+          </div>
+          <button id="activities-toggle-table" class="secondary" type="button">Ver en modo tabla</button>
+        </div>
         <form id="activity-create-form" class="activities-form">
           <label>
             Código de materia
@@ -752,7 +794,44 @@
           </div>
         </form>
         <div id="activities-accordion" class="activities-accordion"></div>
+        <div id="activities-table" class="activities-table" hidden></div>
       </section>
+
+      <div id="activity-edit-modal" class="modal" hidden>
+        <div class="modal-content modal-wide" role="dialog" aria-modal="true" aria-labelledby="activity-edit-title">
+          <div class="modal-header">
+            <h3 id="activity-edit-title">Editar actividad</h3>
+            <button id="activity-edit-close" class="secondary" type="button">Cerrar</button>
+          </div>
+          <form id="activity-edit-form" class="form-grid">
+            <label>
+              Código de materia
+              <input id="activity-edit-codigo-materia" type="text" disabled />
+            </label>
+            <label>
+              Nombre de materia
+              <input id="activity-edit-nombre-materia" type="text" disabled />
+            </label>
+            <label>
+              Código de actividad
+              <input id="activity-edit-codigo-actividad" type="text" disabled />
+            </label>
+            <label>
+              Nombre de actividad
+              <input id="activity-edit-nombre" type="text" required />
+            </label>
+            <div class="form-actions">
+              <button type="submit">Guardar cambios</button>
+              <span id="activity-edit-status" class="form-status"></span>
+            </div>
+          </form>
+          <div class="linked-series">
+            <h4>Series vinculadas</h4>
+            <div id="activity-linked-status" class="muted"></div>
+            <div id="activity-linked-table"></div>
+          </div>
+        </div>
+      </div>
 
       <div id="model-modal" class="modal" hidden>
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="model-modal-title">
