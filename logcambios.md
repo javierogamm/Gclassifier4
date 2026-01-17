@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.15.0
+
+- Se corrigió el nombre de la tabla de actividades para apuntar a `actividades` en Supabase y evitar el error de caché de esquema.
+- Se actualizó la versión visible de la app.
+
 ## v0.14.0
 
 - Se añadió la vista de Gestión de actividades con formulario de alta, tabla editable y botón para volver a la gestión de cuadros.
