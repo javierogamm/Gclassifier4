@@ -546,28 +546,113 @@
         font-size: 14px;
       }
 
-      .activities-table {
-        width: 100%;
-        border-collapse: collapse;
+      .activities-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .activities-accordion {
+        display: grid;
+        gap: 12px;
+      }
+
+      .activities-accordion details {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #ffffff;
+        padding: 4px 12px 12px;
+      }
+
+      .activities-accordion summary {
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 4px;
+        font-weight: 600;
+      }
+
+      .activities-accordion summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .activities-summary {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .activities-summary span {
         font-size: 14px;
       }
 
-      .activities-table th,
-      .activities-table td {
-        border-bottom: 1px solid #e2e8f0;
-        padding: 10px 8px;
-        text-align: left;
+      .activities-summary .code {
+        font-weight: 700;
+        color: #1e293b;
       }
 
-      .activities-table input {
-        width: 100%;
-        border-radius: 4px;
-        border: 1px solid #5b6b84;
+      .activities-summary .name {
+        color: #334155;
+      }
+
+      .activities-summary .count {
+        font-size: 12px;
+        background: #eef2ff;
+        color: #3730a3;
+        border-radius: 999px;
+        padding: 2px 10px;
+      }
+
+      .activities-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .activity-row {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .activity-row-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        min-width: 220px;
+      }
+
+      .activity-row-info .code {
+        font-weight: 700;
+        color: #1f2937;
+      }
+
+      .activity-row-info input {
+        border-radius: 6px;
+        border: 1px solid #cbd5f5;
         padding: 6px 8px;
         font-size: 14px;
+        width: min(420px, 100%);
       }
 
-      .activities-actions {
+      .activity-row-info input[disabled] {
+        background: #f8fafc;
+        color: #334155;
+        border-color: #e2e8f0;
+      }
+
+      .activity-row-actions {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -590,7 +675,7 @@
           </div>
           <p id="status-detail" class="muted"></p>
           <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.15.0</p>
+          <p class="muted"><strong>Versión:</strong> v0.16.0</p>
         </div>
       </header>
 
@@ -646,28 +731,27 @@
         <div id="activities-message" class="muted"></div>
         <form id="activity-create-form" class="activities-form">
           <label>
-            Código de serie
-            <input id="activity-create-codigo" type="text" placeholder="Ej: SER-001" required />
+            Código de materia
+            <input id="activity-create-codigo-materia" type="text" placeholder="Ej: MAT-001" required />
           </label>
           <label>
-            Actividad
-            <input id="activity-create-nombre" type="text" placeholder="Ej: Gestión" required />
+            Nombre de materia
+            <input id="activity-create-nombre-materia" type="text" placeholder="Ej: Gestión" />
+          </label>
+          <label>
+            Código de actividad
+            <input id="activity-create-codigo-actividad" type="text" placeholder="Ej: ACT-001" required />
+          </label>
+          <label>
+            Nombre de actividad
+            <input id="activity-create-nombre" type="text" placeholder="Ej: Archivo" required />
           </label>
           <div class="activities-actions">
             <button type="submit">Guardar actividad</button>
             <span id="activity-create-status" class="form-status"></span>
           </div>
         </form>
-        <table class="activities-table">
-          <thead>
-            <tr>
-              <th>Código de serie</th>
-              <th>Actividad</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="activities-table-body"></tbody>
-        </table>
+        <div id="activities-accordion" class="activities-accordion"></div>
       </section>
 
       <div id="model-modal" class="modal" hidden>

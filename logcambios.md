@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.16.0
+
+- Se reemplazó la vista de actividades por un acordeón jerárquico que agrupa materias y sus actividades en modo colapsado/desplegado.
+- Se ajustó el formulario de alta para usar códigos de materia/actividad y nombres, eliminando referencias a código de serie.
+- Se restringió la edición de actividades a un flujo explícito con botón "Editar" y guardado manual.
+- Se actualizó la versión visible de la app.
+
 ## v0.15.0
 
 - Se corrigió el nombre de la tabla de actividades para apuntar a `actividades` en Supabase y evitar el error de caché de esquema.
