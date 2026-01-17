@@ -16,6 +16,12 @@
         padding: 24px;
       }
 
+      .app-shell {
+        transform: scale(0.85);
+        transform-origin: top left;
+        width: calc(100% / 0.85);
+      }
+
       header {
         display: flex;
         flex-wrap: wrap;
@@ -251,10 +257,41 @@
         flex-wrap: wrap;
       }
 
+      .toggle-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        border: 1px solid #94a3b8;
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 12px;
+        flex-shrink: 0;
+      }
+
+      .result-item summary .toggle-icon::before {
+        content: '+';
+      }
+
+      .result-item[open] summary .toggle-icon::before {
+        content: '-';
+      }
+
       .hierarchy-number {
         font-weight: 700;
         color: #1e40af;
         background: #dbeafe;
+        border-radius: 999px;
+        padding: 2px 8px;
+        font-size: 12px;
+      }
+
+      .codigo-serie-badge {
+        font-weight: 600;
+        color: #0f172a;
+        background: #e2e8f0;
         border-radius: 999px;
         padding: 2px 8px;
         font-size: 12px;
@@ -414,14 +451,15 @@
     <script src="/api/env.js"></script>
   </head>
   <body>
-    <header>
+    <div class="app-shell">
+      <header>
       <div class="header-main">
         <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         <p class="muted">
           Frontend estático listo para Vercel con validación de entorno y ping
           real vía RPC.
         </p>
-        <p class="muted"><strong>Versión:</strong> v0.10.0</p>
+        <p class="muted"><strong>Versión:</strong> v0.11.0</p>
       </div>
       <div class="header-status" aria-live="polite">
         <div class="status" id="status" data-state="warning">
@@ -434,45 +472,47 @@
       </div>
     </header>
 
-    <div id="vercel-warning" class="warning" hidden>
+      <div id="vercel-warning" class="warning" hidden>
       Este proyecto está diseñado para Vercel. Verifica que exista el endpoint
       <code>/api/env.js</code> y que las variables de entorno estén configuradas.
     </div>
 
-    <button id="ping-button" class="secondary" type="button" hidden>Probar conexión</button>
+      <button id="ping-button" class="secondary" type="button" hidden>Probar conexión</button>
 
-    <section class="card">
-      <h2>Gestión de cuadros</h2>
-      <div id="catalog" class="grid"></div>
-    </section>
+      <section class="card">
+        <h2>Gestión de cuadros</h2>
+        <div id="catalog" class="grid"></div>
+      </section>
 
-    <section class="card">
-      <div class="results-header">
-        <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
-        <button id="open-create-modal" type="button">Crear elemento</button>
-      </div>
-      <form id="filter-form" class="filters">
-        <label>
-          Buscar código_serie
-          <input id="filter-codigo-serie" type="search" placeholder="Ej: SER-001" />
-        </label>
-        <label>
-          Buscar título de serie
-          <input id="filter-titulo-serie" type="search" placeholder="Ej: Gestión" />
-        </label>
-        <label>
-          Buscar categoría
-          <input id="filter-categoria" type="search" placeholder="Ej: Documentación" />
-        </label>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button type="submit">Aplicar filtros</button>
-          <button type="button" id="clear-filters" class="secondary">Limpiar</button>
+      <section class="card">
+        <div class="results-header">
+          <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
+          <button id="open-create-modal" type="button">Crear elemento</button>
         </div>
-      </form>
-      <div id="results"></div>
-    </section>
+        <form id="filter-form" class="filters">
+          <label>
+            Buscar código_serie
+            <input id="filter-codigo-serie" type="search" placeholder="Ej: SER-001" />
+          </label>
+          <label>
+            Buscar título de serie
+            <input id="filter-titulo-serie" type="search" placeholder="Ej: Gestión" />
+          </label>
+          <label>
+            Buscar categoría
+            <input id="filter-categoria" type="search" placeholder="Ej: Documentación" />
+          </label>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="submit">Aplicar filtros</button>
+            <button type="button" id="clear-filters" class="secondary">Limpiar</button>
+            <button type="button" id="expand-all" class="secondary">Desplegar todo</button>
+            <button type="button" id="collapse-all" class="secondary">Contraer todo</button>
+          </div>
+        </form>
+        <div id="results"></div>
+      </section>
 
-    <div id="model-modal" class="modal" hidden>
+      <div id="model-modal" class="modal" hidden>
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="model-modal-title">
         <div class="modal-header">
           <h3 id="model-modal-title">Selecciona un modelo</h3>
@@ -483,7 +523,7 @@
       </div>
     </div>
 
-    <div id="create-modal" class="modal" hidden>
+      <div id="create-modal" class="modal" hidden>
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
         <div class="modal-header">
           <h3 id="create-modal-title">Crear nuevo elemento</h3>
@@ -527,7 +567,7 @@
       </div>
     </div>
 
-    <div id="position-modal" class="modal" hidden>
+      <div id="position-modal" class="modal" hidden>
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="position-modal-title">
         <div class="modal-header">
           <h3 id="position-modal-title">Selecciona una posición</h3>
@@ -543,7 +583,7 @@
       </div>
     </div>
 
-    <div id="detail-drawer" class="drawer" hidden>
+      <div id="detail-drawer" class="drawer" hidden>
       <div class="drawer-content" role="dialog" aria-modal="true" aria-labelledby="detail-drawer-title">
         <div class="modal-header">
           <h3 id="detail-drawer-title">Detalles del registro</h3>
@@ -559,6 +599,7 @@
       </div>
     </div>
 
-    <script type="module" src="/js/app.js"></script>
+      <script type="module" src="/js/app.js"></script>
+    </div>
   </body>
 </html>
