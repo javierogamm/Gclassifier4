@@ -86,6 +86,9 @@ const ACTIVITY_FIELD_CANDIDATES = {
   actividadCode: ['codigo_actividad', 'cod_actividad', 'codigo'],
   actividadName: ['nombre_actividad', 'actividad', 'nombre_actividad', 'nombre'],
 };
+const ACTIVITY_LINK_FIELD_CANDIDATES = {
+  actividad: ['actividad'],
+};
 const LINKED_SERIES_FIELD_CANDIDATES = {
   codigoSerie: ['codigo_serie', 'cod', 'codigo'],
   nombre: ['nombre', 'titulo_serie', 'nombre_serie', 'nombre_entidad'],
@@ -93,6 +96,7 @@ const LINKED_SERIES_FIELD_CANDIDATES = {
 };
 const SERIES_CARGA_FIELD_CANDIDATES = {
   codigoSerie: ['codigo_serie', 'cod', 'codigo'],
+  nombre: ['titulo_serie', 'nombre_serie', 'nombre', 'titulo'],
   modelo: ['modelo', 'nombre_entidad', 'modelo_serie'],
 };
 
@@ -971,6 +975,11 @@ function getActivityFieldMap() {
   return {
     actividadCode: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadCode, fields, sampleRow),
     actividadName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadName, fields, sampleRow),
+    actividadLink: pickActivityField(
+      ACTIVITY_LINK_FIELD_CANDIDATES.actividad,
+      fields,
+      sampleRow,
+    ),
   };
 }
 
@@ -984,18 +993,22 @@ function setActivityRowDataset(rowEl, data) {
   rowEl.dataset.actividadField = data.actividadField;
   rowEl.dataset.actividadValue = data.actividadValue;
   rowEl.dataset.actividadName = data.actividadName ?? '';
+  rowEl.dataset.actividadLinkValue = data.actividadLinkValue ?? '';
   rowEl.dataset.nameField = data.nameField;
 }
 
 function buildActivityRowData(row, fieldMap) {
   const actividadCode = row?.[fieldMap.actividadCode] ?? '';
   const actividadName = row?.[fieldMap.actividadName] ?? '';
+  const actividadLinkValue =
+    row?.[fieldMap.actividadLink] ?? row?.[fieldMap.actividadName] ?? actividadCode;
   const identityField = row?.id !== undefined && row?.id !== null ? 'id' : '';
   const identityValue = row?.id !== undefined && row?.id !== null ? row.id : '';
   return {
     actividadField: fieldMap.actividadCode,
     actividadValue: actividadCode ?? '',
     actividadName: actividadName ?? '',
+    actividadLinkValue: actividadLinkValue ?? '',
     nameField: fieldMap.actividadName,
     identityField,
     identityValue,
@@ -1067,7 +1080,11 @@ function renderActividadesAccordion() {
     details.addEventListener('toggle', () => {
       if (!details.open) return;
       if (linkedTable.dataset.loaded === 'true') return;
-      loadLinkedSeriesForActivity(rowData.actividadName || rowData.actividadValue, linkedStatus, linkedTable);
+      loadLinkedSeriesForActivity(
+        rowData.actividadLinkValue || rowData.actividadName || rowData.actividadValue,
+        linkedStatus,
+        linkedTable,
+      );
     });
 
     activitiesAccordionEl.appendChild(details);
@@ -1131,6 +1148,14 @@ function updateActivityRowDisplay(rowEl, updates, fieldMap) {
     rowEl.dataset.actividadValue = updates[fieldMap.actividadCode] ?? '';
     const codeLabel = details?.querySelector('.activities-summary .code');
     if (codeLabel) codeLabel.textContent = updates[fieldMap.actividadCode] || '—';
+  }
+  if (updates[fieldMap.actividadLink] !== undefined) {
+    rowEl.dataset.actividadLinkValue = updates[fieldMap.actividadLink] ?? '';
+  } else if (
+    updates[fieldMap.actividadName] !== undefined &&
+    fieldMap.actividadLink === fieldMap.actividadName
+  ) {
+    rowEl.dataset.actividadLinkValue = updates[fieldMap.actividadName] ?? '';
   }
 }
 
@@ -1257,6 +1282,7 @@ function getSeriesCargaFieldMap(rows) {
   const sampleRow = rows?.[0] ?? {};
   return {
     codigoSerie: pickActivityField(SERIES_CARGA_FIELD_CANDIDATES.codigoSerie, Object.keys(sampleRow), sampleRow),
+    nombre: pickActivityField(SERIES_CARGA_FIELD_CANDIDATES.nombre, Object.keys(sampleRow), sampleRow),
     modelo: pickActivityField(SERIES_CARGA_FIELD_CANDIDATES.modelo, Object.keys(sampleRow), sampleRow),
   };
 }
@@ -1351,13 +1377,19 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
 
   const cargaMap = getSeriesCargaFieldMap(cargaRows);
   const cargaByCode = new Map(
-    cargaRows.map((row) => [row?.[cargaMap.codigoSerie], row?.[cargaMap.modelo]])
+    cargaRows.map((row) => [
+      row?.[cargaMap.codigoSerie],
+      {
+        nombre: row?.[cargaMap.nombre],
+        modelo: row?.[cargaMap.modelo],
+      },
+    ])
   );
 
   const mergedRows = data.map((row) => ({
     codigo: row?.[vinculacionMap.codigoSerie] ?? '—',
-    nombre: row?.[vinculacionMap.nombre] ?? '—',
-    modelo: cargaByCode.get(row?.[vinculacionMap.codigoSerie]) ?? '—',
+    nombre: cargaByCode.get(row?.[vinculacionMap.codigoSerie])?.nombre ?? '—',
+    modelo: cargaByCode.get(row?.[vinculacionMap.codigoSerie])?.modelo ?? '—',
   }));
 
   updateLinkedSeriesStatus(statusEl, `Series vinculadas: ${mergedRows.length}`, false);

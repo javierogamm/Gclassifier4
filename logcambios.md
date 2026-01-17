@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.19.0
+
+- Se ajustó la carga de series vinculadas para tomar el nombre desde `series_carga` usando la relación con `codigo_serie`.
+- Se reforzó el vínculo entre actividades y series para consultar por el campo `actividad` y listar todas las series relacionadas.
+- Se reubicaron los modales fuera del contenedor escalado y se elevó su z-index para asegurar que los cuadros de detalle, edición y creación se visualicen correctamente.
+- Se actualizó la versión visible de la app.
+
 ## v0.18.0
 
 - Se eliminó la referencia a materias en la gestión de actividades y se dejó el acordeón con actividades directas.
