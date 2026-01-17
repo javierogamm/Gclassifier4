@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.17.0
+
+- Se agregó control para desplegar/contraer todas las materias en actividades y alternar entre vista acordeón y modo tabla (solo actividades).
+- Se reemplazó la edición en línea por un modal de edición de actividad, mostrando código de materia y tabla de series vinculadas.
+- Se actualizó la visualización de materias para usar `codigo_materia` y se ajustó la versión visible de la app.
+
 ## v0.16.0
 
 - Se reemplazó la vista de actividades por un acordeón jerárquico que agrupa materias y sus actividades en modo colapsado/desplegado.

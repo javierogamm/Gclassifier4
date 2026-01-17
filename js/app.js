@@ -57,6 +57,20 @@ const activityCreateCodigoActividadEl = document.getElementById('activity-create
 const activityCreateNombreEl = document.getElementById('activity-create-nombre');
 const activityCreateStatusEl = document.getElementById('activity-create-status');
 const activitiesAccordionEl = document.getElementById('activities-accordion');
+const activitiesTableEl = document.getElementById('activities-table');
+const activitiesExpandAllButton = document.getElementById('activities-expand-all');
+const activitiesCollapseAllButton = document.getElementById('activities-collapse-all');
+const activitiesToggleTableButton = document.getElementById('activities-toggle-table');
+const activityEditModalEl = document.getElementById('activity-edit-modal');
+const activityEditCloseEl = document.getElementById('activity-edit-close');
+const activityEditFormEl = document.getElementById('activity-edit-form');
+const activityEditCodigoMateriaEl = document.getElementById('activity-edit-codigo-materia');
+const activityEditNombreMateriaEl = document.getElementById('activity-edit-nombre-materia');
+const activityEditCodigoActividadEl = document.getElementById('activity-edit-codigo-actividad');
+const activityEditNombreEl = document.getElementById('activity-edit-nombre');
+const activityEditStatusEl = document.getElementById('activity-edit-status');
+const activityLinkedStatusEl = document.getElementById('activity-linked-status');
+const activityLinkedTableEl = document.getElementById('activity-linked-table');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -75,12 +89,19 @@ let activeTable = null;
 let activeModelFilter = null;
 let activeRows = [];
 let actividadesRows = [];
+let activitiesViewMode = 'accordion';
+let activityEditContext = null;
 
 const ACTIVITY_FIELD_CANDIDATES = {
-  materiaCode: ['codigo_materia', 'cod_materia', 'cod', 'codigo_serie'],
+  materiaCode: ['codigo_materia', 'cod_materia', 'cod'],
   materiaName: ['nombre_materia', 'materia', 'nombre'],
   actividadCode: ['codigo_actividad', 'cod_actividad', 'codigo'],
   actividadName: ['nombre_actividad', 'actividad', 'nombre_actividad', 'nombre'],
+};
+const LINKED_SERIES_FIELD_CANDIDATES = {
+  codigoSerie: ['codigo_serie', 'cod', 'codigo'],
+  nombre: ['nombre', 'titulo_serie', 'nombre_serie'],
+  modelo: ['modelo', 'nombre_entidad', 'modelo_serie'],
 };
 
 async function fetchActividadForCodigoSerie(codigoSerie) {
@@ -136,10 +157,36 @@ function showActivitiesMessage(message, isError = false) {
   activitiesMessageEl.className = isError ? 'error' : 'muted';
 }
 
+function updateActivityEditStatus(message, isError = false) {
+  if (!activityEditStatusEl) return;
+  activityEditStatusEl.textContent = message || '';
+  activityEditStatusEl.className = isError ? 'form-status error' : 'form-status';
+}
+
+function updateLinkedSeriesStatus(message, isError = false) {
+  if (!activityLinkedStatusEl) return;
+  activityLinkedStatusEl.textContent = message || '';
+  activityLinkedStatusEl.className = isError ? 'error' : 'muted';
+}
+
 function isPlaceholder(value) {
   if (!value) return true;
   const lower = value.toLowerCase();
   return PLACEHOLDER_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+function setActivitiesViewMode(mode) {
+  activitiesViewMode = mode;
+  const isTable = mode === 'table';
+  if (activitiesAccordionEl) activitiesAccordionEl.hidden = isTable;
+  if (activitiesTableEl) activitiesTableEl.hidden = !isTable;
+  if (activitiesExpandAllButton) activitiesExpandAllButton.disabled = isTable;
+  if (activitiesCollapseAllButton) activitiesCollapseAllButton.disabled = isTable;
+  if (activitiesToggleTableButton) {
+    activitiesToggleTableButton.textContent = isTable
+      ? 'Ver en modo acordeón'
+      : 'Ver en modo tabla';
+  }
 }
 
 function validateConfig(env) {
@@ -926,7 +973,7 @@ async function loadActividades(table) {
     return;
   }
   actividadesRows = data || [];
-  renderActividadesAccordion();
+  renderActividadesView();
   showActivitiesMessage(`Actividades cargadas: ${actividadesRows.length}`, false);
 }
 
@@ -948,6 +995,42 @@ function getActivityFieldMap() {
     materiaName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.materiaName, fields, sampleRow),
     actividadCode: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadCode, fields, sampleRow),
     actividadName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadName, fields, sampleRow),
+  };
+}
+
+function renderActividadesView() {
+  renderActividadesAccordion();
+  renderActividadesTable();
+  setActivitiesViewMode(activitiesViewMode);
+}
+
+function setActivityRowDataset(rowEl, data) {
+  rowEl.dataset.identityField = data.identityField;
+  rowEl.dataset.identityValue = data.identityValue;
+  rowEl.dataset.materiaField = data.materiaField;
+  rowEl.dataset.materiaValue = data.materiaValue;
+  rowEl.dataset.materiaName = data.materiaName ?? '';
+  rowEl.dataset.actividadField = data.actividadField;
+  rowEl.dataset.actividadValue = data.actividadValue;
+  rowEl.dataset.actividadName = data.actividadName ?? '';
+  rowEl.dataset.nameField = data.nameField;
+}
+
+function buildActivityRowData(row, fieldMap, materiaCode, materiaName) {
+  const actividadCode = row?.[fieldMap.actividadCode] ?? '';
+  const actividadName = row?.[fieldMap.actividadName] ?? '';
+  const identityField = row?.id !== undefined && row?.id !== null ? 'id' : '';
+  const identityValue = row?.id !== undefined && row?.id !== null ? row.id : '';
+  return {
+    materiaField: fieldMap.materiaCode,
+    materiaValue: materiaCode ?? '',
+    materiaName: materiaName ?? '',
+    actividadField: fieldMap.actividadCode,
+    actividadValue: actividadCode ?? '',
+    actividadName: actividadName ?? '',
+    nameField: fieldMap.actividadName,
+    identityField,
+    identityValue,
   };
 }
 
@@ -1006,34 +1089,24 @@ function renderActividadesAccordion() {
     list.className = 'activities-list';
 
     grupo.actividades.forEach((row) => {
-      const actividadCode = row?.[fieldMap.actividadCode] ?? '';
-      const actividadName = row?.[fieldMap.actividadName] ?? '';
+      const rowData = buildActivityRowData(row, fieldMap, grupo.materiaCode, grupo.materiaName);
 
       const rowEl = document.createElement('div');
       rowEl.className = 'activity-row';
-      rowEl.dataset.identityField = row?.id !== undefined && row?.id !== null ? 'id' : '';
-      rowEl.dataset.identityValue = row?.id !== undefined && row?.id !== null ? row.id : '';
-      rowEl.dataset.materiaField = fieldMap.materiaCode;
-      rowEl.dataset.materiaValue = grupo.materiaCode ?? '';
-      rowEl.dataset.actividadField = fieldMap.actividadCode;
-      rowEl.dataset.actividadValue = actividadCode ?? '';
-      rowEl.dataset.nameField = fieldMap.actividadName;
+      setActivityRowDataset(rowEl, rowData);
 
       const info = document.createElement('div');
       info.className = 'activity-row-info';
       const codeLabel = document.createElement('span');
       codeLabel.className = 'code';
-      codeLabel.textContent = actividadCode || '—';
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.value = actividadName ?? '';
-      nameInput.dataset.field = 'actividad-nombre';
-      nameInput.dataset.original = actividadName ?? '';
-      nameInput.disabled = true;
+      codeLabel.textContent = rowData.actividadValue || '—';
+      const nameLabel = document.createElement('span');
+      nameLabel.className = 'name';
+      nameLabel.textContent = rowData.actividadName || '—';
 
       info.appendChild(codeLabel);
       info.appendChild(document.createTextNode(' - '));
-      info.appendChild(nameInput);
+      info.appendChild(nameLabel);
 
       const actions = document.createElement('div');
       actions.className = 'activity-row-actions';
@@ -1041,45 +1114,9 @@ function renderActividadesAccordion() {
       editButton.type = 'button';
       editButton.className = 'secondary';
       editButton.textContent = 'Editar';
-      const saveButton = document.createElement('button');
-      saveButton.type = 'button';
-      saveButton.textContent = 'Guardar';
-      saveButton.hidden = true;
-      const cancelButton = document.createElement('button');
-      cancelButton.type = 'button';
-      cancelButton.className = 'secondary';
-      cancelButton.textContent = 'Cancelar';
-      cancelButton.hidden = true;
-
-      editButton.addEventListener('click', () => {
-        nameInput.disabled = false;
-        nameInput.focus();
-        editButton.hidden = true;
-        saveButton.hidden = false;
-        cancelButton.hidden = false;
-      });
-
-      cancelButton.addEventListener('click', () => {
-        nameInput.value = nameInput.dataset.original ?? '';
-        nameInput.disabled = true;
-        editButton.hidden = false;
-        saveButton.hidden = true;
-        cancelButton.hidden = true;
-      });
-
-      saveButton.addEventListener('click', async () => {
-        const saved = await saveActividadRow(rowEl);
-        if (saved) {
-          nameInput.disabled = true;
-          editButton.hidden = false;
-          saveButton.hidden = true;
-          cancelButton.hidden = true;
-        }
-      });
+      editButton.addEventListener('click', () => openActivityEditModal(rowEl));
 
       actions.appendChild(editButton);
-      actions.appendChild(saveButton);
-      actions.appendChild(cancelButton);
 
       rowEl.appendChild(info);
       rowEl.appendChild(actions);
@@ -1091,48 +1128,249 @@ function renderActividadesAccordion() {
   });
 }
 
-async function saveActividadRow(rowEl) {
+async function updateActividadName(context, currentValue, originalValue) {
   if (!supabaseClient) {
-    showActivitiesMessage('Configura Supabase antes de guardar.', true);
-    return;
+    updateActivityEditStatus('Configura Supabase antes de guardar.', true);
+    return false;
   }
   const table = getActividadesTableForActive();
   if (!table) {
-    showActivitiesMessage('No hay tabla de actividades configurada.', true);
-    return;
-  }
-  const identityField = rowEl.dataset.identityField;
-  const identityValue = rowEl.dataset.identityValue;
-  const materiaField = rowEl.dataset.materiaField;
-  const materiaValue = rowEl.dataset.materiaValue;
-  const actividadField = rowEl.dataset.actividadField;
-  const actividadValue = rowEl.dataset.actividadValue;
-  const nameField = rowEl.dataset.nameField || 'actividad';
-  const input = rowEl.querySelector('input[data-field="actividad-nombre"]');
-  if (!input) return false;
-  const currentValue = normalizeInputValue(input.value);
-  const originalValue = normalizeInputValue(input.dataset.original ?? '');
-  if (currentValue === originalValue) {
-    showActivitiesMessage('No hay cambios para guardar.', false);
+    updateActivityEditStatus('No hay tabla de actividades configurada.', true);
     return false;
   }
-  let query = supabaseClient.from(table).update({ [nameField]: currentValue });
-  if (identityField && identityValue) {
-    query = query.eq(identityField, identityValue);
-  } else if (materiaField && actividadField) {
-    query = query.eq(materiaField, materiaValue).eq(actividadField, actividadValue);
+  if (currentValue === originalValue) {
+    updateActivityEditStatus('No hay cambios para guardar.', false);
+    return false;
+  }
+  let query = supabaseClient.from(table).update({ [context.nameField]: currentValue });
+  if (context.identityField && context.identityValue) {
+    query = query.eq(context.identityField, context.identityValue);
+  } else if (context.materiaField && context.actividadField) {
+    query = query.eq(context.materiaField, context.materiaValue).eq(context.actividadField, context.actividadValue);
   } else {
-    showActivitiesMessage('No se pudo identificar la actividad para guardar.', true);
+    updateActivityEditStatus('No se pudo identificar la actividad para guardar.', true);
     return false;
   }
   const { error } = await query;
   if (error) {
-    showActivitiesMessage(mapSupabaseError(error), true);
+    updateActivityEditStatus(mapSupabaseError(error), true);
     return false;
   }
-  input.dataset.original = input.value;
-  showActivitiesMessage('Actividad actualizada.', false);
+  updateActivityEditStatus('Actividad actualizada.', false);
   return true;
+}
+
+function renderActividadesTable() {
+  if (!activitiesTableEl) return;
+  activitiesTableEl.innerHTML = '';
+  if (!actividadesRows.length) {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'muted';
+    emptyMessage.textContent = 'No hay actividades registradas.';
+    activitiesTableEl.appendChild(emptyMessage);
+    return;
+  }
+
+  const fieldMap = getActivityFieldMap();
+  const table = document.createElement('table');
+  table.className = 'data-table';
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Código de actividad', 'Nombre de actividad', 'Acciones'].forEach((label) => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  actividadesRows.forEach((row) => {
+    const materiaCode = row?.[fieldMap.materiaCode] ?? '';
+    const materiaName = row?.[fieldMap.materiaName] ?? '';
+    const rowData = buildActivityRowData(row, fieldMap, materiaCode, materiaName);
+    const tr = document.createElement('tr');
+    tr.className = 'activity-row';
+    setActivityRowDataset(tr, rowData);
+
+    const codeCell = document.createElement('td');
+    codeCell.textContent = rowData.actividadValue || '—';
+    const nameCell = document.createElement('td');
+    nameCell.textContent = rowData.actividadName || '—';
+    nameCell.className = 'activity-name';
+    const actionCell = document.createElement('td');
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.className = 'secondary';
+    editButton.textContent = 'Editar';
+    editButton.addEventListener('click', () => openActivityEditModal(tr));
+    actionCell.appendChild(editButton);
+
+    tr.appendChild(codeCell);
+    tr.appendChild(nameCell);
+    tr.appendChild(actionCell);
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  activitiesTableEl.appendChild(table);
+}
+
+function updateActivityRowDisplay(rowEl, newName) {
+  rowEl.dataset.actividadName = newName ?? '';
+  if (rowEl.tagName.toLowerCase() === 'tr') {
+    const nameCell = rowEl.querySelector('.activity-name');
+    if (nameCell) nameCell.textContent = newName || '—';
+    return;
+  }
+  const nameLabel = rowEl.querySelector('.activity-row-info .name');
+  if (nameLabel) nameLabel.textContent = newName || '—';
+}
+
+function updateActividadesRowsData(context, newName) {
+  if (!context?.nameField) return;
+  const matchById = context.identityField && context.identityValue;
+  const matchByKeys = context.materiaField && context.actividadField;
+  const targetIndex = actividadesRows.findIndex((row) => {
+    if (matchById) {
+      return row?.[context.identityField] === context.identityValue;
+    }
+    if (matchByKeys) {
+      return (
+        row?.[context.materiaField] === context.materiaValue &&
+        row?.[context.actividadField] === context.actividadValue
+      );
+    }
+    return false;
+  });
+  if (targetIndex >= 0) {
+    actividadesRows[targetIndex][context.nameField] = newName;
+  }
+}
+
+function openActivityEditModal(rowEl) {
+  if (!activityEditModalEl || !activityEditNombreEl) return;
+  const context = {
+    identityField: rowEl.dataset.identityField,
+    identityValue: rowEl.dataset.identityValue,
+    materiaField: rowEl.dataset.materiaField,
+    materiaValue: rowEl.dataset.materiaValue,
+    materiaName: rowEl.dataset.materiaName ?? '',
+    actividadField: rowEl.dataset.actividadField,
+    actividadValue: rowEl.dataset.actividadValue,
+    actividadName: rowEl.dataset.actividadName ?? '',
+    nameField: rowEl.dataset.nameField || 'actividad',
+    rowEl,
+  };
+  activityEditContext = context;
+  if (activityEditCodigoMateriaEl) activityEditCodigoMateriaEl.value = context.materiaValue || '';
+  if (activityEditNombreMateriaEl) activityEditNombreMateriaEl.value = context.materiaName || '';
+  if (activityEditCodigoActividadEl) activityEditCodigoActividadEl.value = context.actividadValue || '';
+  activityEditNombreEl.value = context.actividadName || '';
+  activityEditNombreEl.dataset.original = context.actividadName || '';
+  updateActivityEditStatus('', false);
+  activityEditModalEl.hidden = false;
+  loadLinkedSeries(context.actividadName || context.actividadValue);
+}
+
+function closeActivityEditModal() {
+  if (!activityEditModalEl) return;
+  activityEditModalEl.hidden = true;
+  activityEditContext = null;
+}
+
+async function handleActivityEditSubmit(event) {
+  event.preventDefault();
+  if (!activityEditContext) return;
+  const currentValue = normalizeInputValue(activityEditNombreEl.value);
+  const originalValue = normalizeInputValue(activityEditNombreEl.dataset.original ?? '');
+  if (!currentValue) {
+    updateActivityEditStatus('El nombre de la actividad es obligatorio.', true);
+    return;
+  }
+  updateActivityEditStatus('Guardando cambios...', false);
+  const saved = await updateActividadName(activityEditContext, currentValue, originalValue);
+  if (!saved) return;
+  activityEditNombreEl.dataset.original = currentValue;
+  updateActivityRowDisplay(activityEditContext.rowEl, currentValue);
+  updateActividadesRowsData(activityEditContext, currentValue);
+  const targetValue = currentValue || activityEditContext.actividadValue;
+  loadLinkedSeries(targetValue);
+}
+
+function getLinkedSeriesFieldMap(rows) {
+  const sampleRow = rows?.[0] ?? {};
+  return {
+    codigoSerie: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.codigoSerie, Object.keys(sampleRow), sampleRow),
+    nombre: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.nombre, Object.keys(sampleRow), sampleRow),
+    modelo: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.modelo, Object.keys(sampleRow), sampleRow),
+  };
+}
+
+function renderLinkedSeriesTable(rows) {
+  if (!activityLinkedTableEl) return;
+  activityLinkedTableEl.innerHTML = '';
+  if (!rows?.length) {
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = 'No hay series vinculadas.';
+    activityLinkedTableEl.appendChild(empty);
+    return;
+  }
+  const fieldMap = getLinkedSeriesFieldMap(rows);
+  const table = document.createElement('table');
+  table.className = 'data-table';
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Código de serie', 'Nombre', 'Modelo'].forEach((label) => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  rows.forEach((row) => {
+    const tr = document.createElement('tr');
+    const codigoCell = document.createElement('td');
+    codigoCell.textContent = row?.[fieldMap.codigoSerie] ?? '—';
+    const nombreCell = document.createElement('td');
+    nombreCell.textContent = row?.[fieldMap.nombre] ?? '—';
+    const modeloCell = document.createElement('td');
+    modeloCell.textContent = row?.[fieldMap.modelo] ?? '—';
+    tr.appendChild(codigoCell);
+    tr.appendChild(nombreCell);
+    tr.appendChild(modeloCell);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  activityLinkedTableEl.appendChild(table);
+}
+
+async function loadLinkedSeries(actividadValue) {
+  if (!supabaseClient) {
+    updateLinkedSeriesStatus('Configura Supabase antes de consultar series vinculadas.', true);
+    renderLinkedSeriesTable([]);
+    return;
+  }
+  if (!actividadValue) {
+    updateLinkedSeriesStatus('No se pudo identificar la actividad para vinculación.', true);
+    renderLinkedSeriesTable([]);
+    return;
+  }
+  updateLinkedSeriesStatus('Consultando series vinculadas...', false);
+  const { data, error } = await supabaseClient
+    .from('series_vinculacion')
+    .select('*')
+    .eq('actividad', actividadValue);
+  if (error) {
+    updateLinkedSeriesStatus(mapSupabaseError(error), true);
+    renderLinkedSeriesTable([]);
+    return;
+  }
+  updateLinkedSeriesStatus(`Series vinculadas: ${data?.length ?? 0}`, false);
+  renderLinkedSeriesTable(data || []);
 }
 
 async function handleActivityCreateSubmit(event) {
@@ -1297,6 +1535,7 @@ function init() {
   const env = window.ENV;
 
   updateResultsTitle(null, 0);
+  setActivitiesViewMode('accordion');
 
   if (!env) {
     vercelWarningEl.hidden = false;
@@ -1359,6 +1598,40 @@ backToCuadrosButton.addEventListener('click', () => {
   showCuadrosView();
 });
 activityCreateFormEl.addEventListener('submit', handleActivityCreateSubmit);
+if (activitiesExpandAllButton) {
+  activitiesExpandAllButton.addEventListener('click', () => {
+    if (!activitiesAccordionEl) return;
+    activitiesAccordionEl.querySelectorAll('details').forEach((detail) => {
+      detail.open = true;
+    });
+  });
+}
+if (activitiesCollapseAllButton) {
+  activitiesCollapseAllButton.addEventListener('click', () => {
+    if (!activitiesAccordionEl) return;
+    activitiesAccordionEl.querySelectorAll('details').forEach((detail) => {
+      detail.open = false;
+    });
+  });
+}
+if (activitiesToggleTableButton) {
+  activitiesToggleTableButton.addEventListener('click', () => {
+    setActivitiesViewMode(activitiesViewMode === 'accordion' ? 'table' : 'accordion');
+  });
+}
+if (activityEditCloseEl) {
+  activityEditCloseEl.addEventListener('click', closeActivityEditModal);
+}
+if (activityEditFormEl) {
+  activityEditFormEl.addEventListener('submit', handleActivityEditSubmit);
+}
+if (activityEditModalEl) {
+  activityEditModalEl.addEventListener('click', (event) => {
+    if (event.target === activityEditModalEl) {
+      closeActivityEditModal();
+    }
+  });
+}
 modelModalEl.addEventListener('click', (event) => {
   if (event.target === modelModalEl) {
     closeModelModal();
@@ -1387,6 +1660,9 @@ window.addEventListener('keydown', (event) => {
     }
     if (!detailDrawerEl.hidden) {
       closeDetailDrawer();
+    }
+    if (activityEditModalEl && !activityEditModalEl.hidden) {
+      closeActivityEditModal();
     }
   }
 });
