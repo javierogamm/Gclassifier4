@@ -693,6 +693,15 @@
         display: grid;
         gap: 8px;
       }
+
+      #activity-linked-table {
+        max-height: 220px;
+        overflow: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 8px;
+        background: #fff;
+      }
     </style>
     <script src="/api/env.js"></script>
   </head>
@@ -710,7 +719,7 @@
           </div>
           <p id="status-detail" class="muted"></p>
           <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.17.0</p>
+          <p class="muted"><strong>Versión:</strong> v0.18.0</p>
         </div>
       </header>
 
@@ -764,13 +773,7 @@
           </button>
         </div>
         <div id="activities-message" class="muted"></div>
-        <div class="activities-toolbar">
-          <div class="activities-buttons">
-            <button id="activities-expand-all" class="secondary" type="button">Desplegar todo</button>
-            <button id="activities-collapse-all" class="secondary" type="button">Contraer todo</button>
-          </div>
-          <button id="activities-toggle-table" class="secondary" type="button">Ver en modo tabla</button>
-        </div>
+        <div class="activities-toolbar"></div>
         <form id="activity-create-form" class="activities-form">
           <label>
             Código de materia
@@ -793,8 +796,7 @@
             <span id="activity-create-status" class="form-status"></span>
           </div>
         </form>
-        <div id="activities-accordion" class="activities-accordion"></div>
-        <div id="activities-table" class="activities-table" hidden></div>
+        <div id="activities-table" class="activities-table"></div>
       </section>
 
       <div id="activity-edit-modal" class="modal" hidden>
@@ -814,7 +816,7 @@
             </label>
             <label>
               Código de actividad
-              <input id="activity-edit-codigo-actividad" type="text" disabled />
+              <input id="activity-edit-codigo-actividad" type="text" required />
             </label>
             <label>
               Nombre de actividad

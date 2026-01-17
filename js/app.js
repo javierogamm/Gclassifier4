@@ -56,11 +56,7 @@ const activityCreateNombreMateriaEl = document.getElementById('activity-create-n
 const activityCreateCodigoActividadEl = document.getElementById('activity-create-codigo-actividad');
 const activityCreateNombreEl = document.getElementById('activity-create-nombre');
 const activityCreateStatusEl = document.getElementById('activity-create-status');
-const activitiesAccordionEl = document.getElementById('activities-accordion');
 const activitiesTableEl = document.getElementById('activities-table');
-const activitiesExpandAllButton = document.getElementById('activities-expand-all');
-const activitiesCollapseAllButton = document.getElementById('activities-collapse-all');
-const activitiesToggleTableButton = document.getElementById('activities-toggle-table');
 const activityEditModalEl = document.getElementById('activity-edit-modal');
 const activityEditCloseEl = document.getElementById('activity-edit-close');
 const activityEditFormEl = document.getElementById('activity-edit-form');
@@ -89,7 +85,6 @@ let activeTable = null;
 let activeModelFilter = null;
 let activeRows = [];
 let actividadesRows = [];
-let activitiesViewMode = 'accordion';
 let activityEditContext = null;
 
 const ACTIVITY_FIELD_CANDIDATES = {
@@ -173,20 +168,6 @@ function isPlaceholder(value) {
   if (!value) return true;
   const lower = value.toLowerCase();
   return PLACEHOLDER_PATTERNS.some((pattern) => lower.includes(pattern));
-}
-
-function setActivitiesViewMode(mode) {
-  activitiesViewMode = mode;
-  const isTable = mode === 'table';
-  if (activitiesAccordionEl) activitiesAccordionEl.hidden = isTable;
-  if (activitiesTableEl) activitiesTableEl.hidden = !isTable;
-  if (activitiesExpandAllButton) activitiesExpandAllButton.disabled = isTable;
-  if (activitiesCollapseAllButton) activitiesCollapseAllButton.disabled = isTable;
-  if (activitiesToggleTableButton) {
-    activitiesToggleTableButton.textContent = isTable
-      ? 'Ver en modo acordeón'
-      : 'Ver en modo tabla';
-  }
 }
 
 function validateConfig(env) {
@@ -969,7 +950,7 @@ async function loadActividades(table) {
   const { data, error } = await supabaseClient.from(table).select('*');
   if (error) {
     showActivitiesMessage(mapSupabaseError(error), true);
-    activitiesAccordionEl.innerHTML = '';
+    if (activitiesTableEl) activitiesTableEl.innerHTML = '';
     return;
   }
   actividadesRows = data || [];
@@ -999,9 +980,7 @@ function getActivityFieldMap() {
 }
 
 function renderActividadesView() {
-  renderActividadesAccordion();
   renderActividadesTable();
-  setActivitiesViewMode(activitiesViewMode);
 }
 
 function setActivityRowDataset(rowEl, data) {
@@ -1034,101 +1013,7 @@ function buildActivityRowData(row, fieldMap, materiaCode, materiaName) {
   };
 }
 
-function renderActividadesAccordion() {
-  if (!activitiesAccordionEl) return;
-  activitiesAccordionEl.innerHTML = '';
-  if (!actividadesRows.length) {
-    const emptyMessage = document.createElement('div');
-    emptyMessage.className = 'muted';
-    emptyMessage.textContent = 'No hay actividades registradas.';
-    activitiesAccordionEl.appendChild(emptyMessage);
-    return;
-  }
-
-  const fieldMap = getActivityFieldMap();
-  const grupos = new Map();
-
-  actividadesRows.forEach((row, index) => {
-    const materiaCode = row?.[fieldMap.materiaCode] ?? '';
-    const materiaName = row?.[fieldMap.materiaName] ?? '';
-    const keyBase = `${materiaCode || 'sin-codigo'}-${materiaName || 'sin-nombre'}`;
-    const key = grupos.has(keyBase) ? `${keyBase}-${index}` : keyBase;
-    if (!grupos.has(key)) {
-      grupos.set(key, {
-        materiaCode,
-        materiaName,
-        actividades: [],
-      });
-    }
-    grupos.get(key).actividades.push(row);
-  });
-
-  Array.from(grupos.values()).forEach((grupo) => {
-    const details = document.createElement('details');
-    details.open = false;
-    const summary = document.createElement('summary');
-    const summaryContent = document.createElement('div');
-    summaryContent.className = 'activities-summary';
-    const codeSpan = document.createElement('span');
-    codeSpan.className = 'code';
-    codeSpan.textContent = grupo.materiaCode || 'Sin código';
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'name';
-    nameSpan.textContent = grupo.materiaName || 'Sin nombre';
-    const countSpan = document.createElement('span');
-    countSpan.className = 'count';
-    countSpan.textContent = `${grupo.actividades.length} actividad(es)`;
-    summaryContent.appendChild(codeSpan);
-    summaryContent.appendChild(document.createTextNode(' - '));
-    summaryContent.appendChild(nameSpan);
-    summaryContent.appendChild(countSpan);
-    summary.appendChild(summaryContent);
-    details.appendChild(summary);
-
-    const list = document.createElement('div');
-    list.className = 'activities-list';
-
-    grupo.actividades.forEach((row) => {
-      const rowData = buildActivityRowData(row, fieldMap, grupo.materiaCode, grupo.materiaName);
-
-      const rowEl = document.createElement('div');
-      rowEl.className = 'activity-row';
-      setActivityRowDataset(rowEl, rowData);
-
-      const info = document.createElement('div');
-      info.className = 'activity-row-info';
-      const codeLabel = document.createElement('span');
-      codeLabel.className = 'code';
-      codeLabel.textContent = rowData.actividadValue || '—';
-      const nameLabel = document.createElement('span');
-      nameLabel.className = 'name';
-      nameLabel.textContent = rowData.actividadName || '—';
-
-      info.appendChild(codeLabel);
-      info.appendChild(document.createTextNode(' - '));
-      info.appendChild(nameLabel);
-
-      const actions = document.createElement('div');
-      actions.className = 'activity-row-actions';
-      const editButton = document.createElement('button');
-      editButton.type = 'button';
-      editButton.className = 'secondary';
-      editButton.textContent = 'Editar';
-      editButton.addEventListener('click', () => openActivityEditModal(rowEl));
-
-      actions.appendChild(editButton);
-
-      rowEl.appendChild(info);
-      rowEl.appendChild(actions);
-      list.appendChild(rowEl);
-    });
-
-    details.appendChild(list);
-    activitiesAccordionEl.appendChild(details);
-  });
-}
-
-async function updateActividadName(context, currentValue, originalValue) {
+async function updateActividadFields(context, updates) {
   if (!supabaseClient) {
     updateActivityEditStatus('Configura Supabase antes de guardar.', true);
     return false;
@@ -1138,11 +1023,11 @@ async function updateActividadName(context, currentValue, originalValue) {
     updateActivityEditStatus('No hay tabla de actividades configurada.', true);
     return false;
   }
-  if (currentValue === originalValue) {
+  if (!updates || Object.keys(updates).length === 0) {
     updateActivityEditStatus('No hay cambios para guardar.', false);
     return false;
   }
-  let query = supabaseClient.from(table).update({ [context.nameField]: currentValue });
+  let query = supabaseClient.from(table).update(updates);
   if (context.identityField && context.identityValue) {
     query = query.eq(context.identityField, context.identityValue);
   } else if (context.materiaField && context.actividadField) {
@@ -1176,11 +1061,13 @@ function renderActividadesTable() {
   table.className = 'data-table';
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  ['Código de actividad', 'Nombre de actividad', 'Acciones'].forEach((label) => {
-    const th = document.createElement('th');
-    th.textContent = label;
-    headerRow.appendChild(th);
-  });
+  ['Código de materia', 'Nombre de materia', 'Código de actividad', 'Nombre de actividad', 'Acciones'].forEach(
+    (label) => {
+      const th = document.createElement('th');
+      th.textContent = label;
+      headerRow.appendChild(th);
+    },
+  );
   thead.appendChild(headerRow);
   table.appendChild(thead);
 
@@ -1193,8 +1080,13 @@ function renderActividadesTable() {
     tr.className = 'activity-row';
     setActivityRowDataset(tr, rowData);
 
+    const materiaCodeCell = document.createElement('td');
+    materiaCodeCell.textContent = rowData.materiaValue || '—';
+    const materiaNameCell = document.createElement('td');
+    materiaNameCell.textContent = rowData.materiaName || '—';
     const codeCell = document.createElement('td');
     codeCell.textContent = rowData.actividadValue || '—';
+    codeCell.className = 'activity-code';
     const nameCell = document.createElement('td');
     nameCell.textContent = rowData.actividadName || '—';
     nameCell.className = 'activity-name';
@@ -1206,6 +1098,8 @@ function renderActividadesTable() {
     editButton.addEventListener('click', () => openActivityEditModal(tr));
     actionCell.appendChild(editButton);
 
+    tr.appendChild(materiaCodeCell);
+    tr.appendChild(materiaNameCell);
     tr.appendChild(codeCell);
     tr.appendChild(nameCell);
     tr.appendChild(actionCell);
@@ -1216,9 +1110,12 @@ function renderActividadesTable() {
   activitiesTableEl.appendChild(table);
 }
 
-function updateActivityRowDisplay(rowEl, newName) {
+function updateActivityRowDisplay(rowEl, newCode, newName) {
+  rowEl.dataset.actividadValue = newCode ?? '';
   rowEl.dataset.actividadName = newName ?? '';
   if (rowEl.tagName.toLowerCase() === 'tr') {
+    const codeCell = rowEl.querySelector('.activity-code');
+    if (codeCell) codeCell.textContent = newCode || '—';
     const nameCell = rowEl.querySelector('.activity-name');
     if (nameCell) nameCell.textContent = newName || '—';
     return;
@@ -1227,8 +1124,8 @@ function updateActivityRowDisplay(rowEl, newName) {
   if (nameLabel) nameLabel.textContent = newName || '—';
 }
 
-function updateActividadesRowsData(context, newName) {
-  if (!context?.nameField) return;
+function updateActividadesRowsData(context, newCode, newName) {
+  if (!context?.nameField || !context?.actividadField) return;
   const matchById = context.identityField && context.identityValue;
   const matchByKeys = context.materiaField && context.actividadField;
   const targetIndex = actividadesRows.findIndex((row) => {
@@ -1245,6 +1142,7 @@ function updateActividadesRowsData(context, newName) {
   });
   if (targetIndex >= 0) {
     actividadesRows[targetIndex][context.nameField] = newName;
+    actividadesRows[targetIndex][context.actividadField] = newCode;
   }
 }
 
@@ -1265,12 +1163,15 @@ function openActivityEditModal(rowEl) {
   activityEditContext = context;
   if (activityEditCodigoMateriaEl) activityEditCodigoMateriaEl.value = context.materiaValue || '';
   if (activityEditNombreMateriaEl) activityEditNombreMateriaEl.value = context.materiaName || '';
-  if (activityEditCodigoActividadEl) activityEditCodigoActividadEl.value = context.actividadValue || '';
+  if (activityEditCodigoActividadEl) {
+    activityEditCodigoActividadEl.value = context.actividadValue || '';
+    activityEditCodigoActividadEl.dataset.original = context.actividadValue || '';
+  }
   activityEditNombreEl.value = context.actividadName || '';
   activityEditNombreEl.dataset.original = context.actividadName || '';
   updateActivityEditStatus('', false);
   activityEditModalEl.hidden = false;
-  loadLinkedSeries(context.actividadName || context.actividadValue);
+  loadLinkedSeries(context.actividadName, context.actividadValue);
 }
 
 function closeActivityEditModal() {
@@ -1282,20 +1183,31 @@ function closeActivityEditModal() {
 async function handleActivityEditSubmit(event) {
   event.preventDefault();
   if (!activityEditContext) return;
-  const currentValue = normalizeInputValue(activityEditNombreEl.value);
-  const originalValue = normalizeInputValue(activityEditNombreEl.dataset.original ?? '');
-  if (!currentValue) {
-    updateActivityEditStatus('El nombre de la actividad es obligatorio.', true);
+  const currentCode = normalizeInputValue(activityEditCodigoActividadEl.value);
+  const currentName = normalizeInputValue(activityEditNombreEl.value);
+  const originalCode = normalizeInputValue(activityEditCodigoActividadEl.dataset.original ?? '');
+  const originalName = normalizeInputValue(activityEditNombreEl.dataset.original ?? '');
+  if (!currentCode || !currentName) {
+    updateActivityEditStatus('Código y nombre de la actividad son obligatorios.', true);
     return;
   }
   updateActivityEditStatus('Guardando cambios...', false);
-  const saved = await updateActividadName(activityEditContext, currentValue, originalValue);
+  const updates = {};
+  if (currentCode !== originalCode) {
+    updates[activityEditContext.actividadField] = currentCode;
+  }
+  if (currentName !== originalName) {
+    updates[activityEditContext.nameField] = currentName;
+  }
+  const saved = await updateActividadFields(activityEditContext, updates);
   if (!saved) return;
-  activityEditNombreEl.dataset.original = currentValue;
-  updateActivityRowDisplay(activityEditContext.rowEl, currentValue);
-  updateActividadesRowsData(activityEditContext, currentValue);
-  const targetValue = currentValue || activityEditContext.actividadValue;
-  loadLinkedSeries(targetValue);
+  activityEditCodigoActividadEl.dataset.original = currentCode;
+  activityEditNombreEl.dataset.original = currentName;
+  updateActivityRowDisplay(activityEditContext.rowEl, currentCode, currentName);
+  updateActividadesRowsData(activityEditContext, currentCode, currentName);
+  activityEditContext.actividadValue = currentCode;
+  activityEditContext.actividadName = currentName;
+  loadLinkedSeries(currentName, currentCode);
 }
 
 function getLinkedSeriesFieldMap(rows) {
@@ -1348,25 +1260,37 @@ function renderLinkedSeriesTable(rows) {
   activityLinkedTableEl.appendChild(table);
 }
 
-async function loadLinkedSeries(actividadValue) {
+async function loadLinkedSeries(actividadName, actividadCode) {
   if (!supabaseClient) {
     updateLinkedSeriesStatus('Configura Supabase antes de consultar series vinculadas.', true);
     renderLinkedSeriesTable([]);
     return;
   }
-  if (!actividadValue) {
+  if (!actividadName && !actividadCode) {
     updateLinkedSeriesStatus('No se pudo identificar la actividad para vinculación.', true);
     renderLinkedSeriesTable([]);
     return;
   }
   updateLinkedSeriesStatus('Consultando series vinculadas...', false);
-  const { data, error } = await supabaseClient
-    .from('series_vinculacion')
-    .select('*')
-    .eq('actividad', actividadValue);
+  const queryValue = actividadName || actividadCode;
+  const { data, error } = await supabaseClient.from('series_vinculacion').select('*').eq('actividad', queryValue);
   if (error) {
     updateLinkedSeriesStatus(mapSupabaseError(error), true);
     renderLinkedSeriesTable([]);
+    return;
+  }
+  if (!data?.length && actividadCode && actividadCode !== queryValue) {
+    const { data: fallbackData, error: fallbackError } = await supabaseClient
+      .from('series_vinculacion')
+      .select('*')
+      .eq('actividad', actividadCode);
+    if (fallbackError) {
+      updateLinkedSeriesStatus(mapSupabaseError(fallbackError), true);
+      renderLinkedSeriesTable([]);
+      return;
+    }
+    updateLinkedSeriesStatus(`Series vinculadas: ${fallbackData?.length ?? 0}`, false);
+    renderLinkedSeriesTable(fallbackData || []);
     return;
   }
   updateLinkedSeriesStatus(`Series vinculadas: ${data?.length ?? 0}`, false);
@@ -1598,27 +1522,6 @@ backToCuadrosButton.addEventListener('click', () => {
   showCuadrosView();
 });
 activityCreateFormEl.addEventListener('submit', handleActivityCreateSubmit);
-if (activitiesExpandAllButton) {
-  activitiesExpandAllButton.addEventListener('click', () => {
-    if (!activitiesAccordionEl) return;
-    activitiesAccordionEl.querySelectorAll('details').forEach((detail) => {
-      detail.open = true;
-    });
-  });
-}
-if (activitiesCollapseAllButton) {
-  activitiesCollapseAllButton.addEventListener('click', () => {
-    if (!activitiesAccordionEl) return;
-    activitiesAccordionEl.querySelectorAll('details').forEach((detail) => {
-      detail.open = false;
-    });
-  });
-}
-if (activitiesToggleTableButton) {
-  activitiesToggleTableButton.addEventListener('click', () => {
-    setActivitiesViewMode(activitiesViewMode === 'accordion' ? 'table' : 'accordion');
-  });
-}
 if (activityEditCloseEl) {
   activityEditCloseEl.addEventListener('click', closeActivityEditModal);
 }

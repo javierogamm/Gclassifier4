@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.18.0
+
+- Se reemplazó el acordeón por una tabla única para listar actividades, mostrando materia y acciones de edición.
+- Se habilitó la edición de código y nombre de actividad desde el modal, refrescando los datos locales y la vinculación.
+- Se ajustó la tabla de series vinculadas para permitir scroll dentro del modal y se actualizó la versión visible de la app.
+
 ## v0.17.0
 
 - Se agregó control para desplegar/contraer todas las materias en actividades y alternar entre vista acordeón y modo tabla (solo actividades).
