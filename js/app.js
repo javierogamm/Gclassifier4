@@ -51,10 +51,12 @@ const activitiesViewEl = document.getElementById('activities-view');
 const backToCuadrosButton = document.getElementById('back-to-cuadros');
 const activitiesMessageEl = document.getElementById('activities-message');
 const activityCreateFormEl = document.getElementById('activity-create-form');
-const activityCreateCodigoEl = document.getElementById('activity-create-codigo');
+const activityCreateCodigoMateriaEl = document.getElementById('activity-create-codigo-materia');
+const activityCreateNombreMateriaEl = document.getElementById('activity-create-nombre-materia');
+const activityCreateCodigoActividadEl = document.getElementById('activity-create-codigo-actividad');
 const activityCreateNombreEl = document.getElementById('activity-create-nombre');
 const activityCreateStatusEl = document.getElementById('activity-create-status');
-const activitiesTableBodyEl = document.getElementById('activities-table-body');
+const activitiesAccordionEl = document.getElementById('activities-accordion');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -73,6 +75,13 @@ let activeTable = null;
 let activeModelFilter = null;
 let activeRows = [];
 let actividadesRows = [];
+
+const ACTIVITY_FIELD_CANDIDATES = {
+  materiaCode: ['codigo_materia', 'cod_materia', 'cod', 'codigo_serie'],
+  materiaName: ['nombre_materia', 'materia', 'nombre'],
+  actividadCode: ['codigo_actividad', 'cod_actividad', 'codigo'],
+  actividadName: ['nombre_actividad', 'actividad', 'nombre_actividad', 'nombre'],
+};
 
 async function fetchActividadForCodigoSerie(codigoSerie) {
   if (!supabaseClient || !codigoSerie) return null;
@@ -913,47 +922,172 @@ async function loadActividades(table) {
   const { data, error } = await supabaseClient.from(table).select('*');
   if (error) {
     showActivitiesMessage(mapSupabaseError(error), true);
-    activitiesTableBodyEl.innerHTML = '';
+    activitiesAccordionEl.innerHTML = '';
     return;
   }
   actividadesRows = data || [];
-  renderActividadesTable();
+  renderActividadesAccordion();
   showActivitiesMessage(`Actividades cargadas: ${actividadesRows.length}`, false);
 }
 
-function renderActividadesTable() {
-  if (!activitiesTableBodyEl) return;
-  activitiesTableBodyEl.innerHTML = '';
+function pickActivityField(candidates, fields, row) {
+  return (
+    candidates.find((field) => fields.includes(field)) ||
+    candidates.find((field) => row?.[field] !== undefined) ||
+    candidates[0]
+  );
+}
+
+function getActivityFieldMap() {
+  const entity = activeCatalog?.entities?.find((item) => item?.carga?.table === activeTable);
+  const fields = entity?.actividades?.fields ?? [];
+  const sampleRow = actividadesRows[0] || {};
+
+  return {
+    materiaCode: pickActivityField(ACTIVITY_FIELD_CANDIDATES.materiaCode, fields, sampleRow),
+    materiaName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.materiaName, fields, sampleRow),
+    actividadCode: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadCode, fields, sampleRow),
+    actividadName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadName, fields, sampleRow),
+  };
+}
+
+function renderActividadesAccordion() {
+  if (!activitiesAccordionEl) return;
+  activitiesAccordionEl.innerHTML = '';
   if (!actividadesRows.length) {
-    const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="3" class="muted">No hay actividades registradas.</td>';
-    activitiesTableBodyEl.appendChild(row);
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'muted';
+    emptyMessage.textContent = 'No hay actividades registradas.';
+    activitiesAccordionEl.appendChild(emptyMessage);
     return;
   }
 
-  actividadesRows.forEach((row) => {
-    const codigoSerie = row?.cod ?? row?.codigo_serie ?? '';
-    const actividad = row?.actividad ?? '';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${codigoSerie}</td>
-      <td><input type="text" value="${actividad ?? ''}" data-field="actividad" /></td>
-      <td>
-        <button type="button" class="secondary" data-action="save">Guardar</button>
-      </td>
-    `;
-    tr.dataset.identityField = row?.id !== undefined && row?.id !== null ? 'id' : 'cod';
-    tr.dataset.identityValue =
-      row?.id !== undefined && row?.id !== null ? row.id : codigoSerie;
-    const input = tr.querySelector('input[data-field="actividad"]');
-    if (input) {
-      input.dataset.original = actividad ?? '';
+  const fieldMap = getActivityFieldMap();
+  const grupos = new Map();
+
+  actividadesRows.forEach((row, index) => {
+    const materiaCode = row?.[fieldMap.materiaCode] ?? '';
+    const materiaName = row?.[fieldMap.materiaName] ?? '';
+    const keyBase = `${materiaCode || 'sin-codigo'}-${materiaName || 'sin-nombre'}`;
+    const key = grupos.has(keyBase) ? `${keyBase}-${index}` : keyBase;
+    if (!grupos.has(key)) {
+      grupos.set(key, {
+        materiaCode,
+        materiaName,
+        actividades: [],
+      });
     }
-    const saveButton = tr.querySelector('button[data-action="save"]');
-    saveButton.addEventListener('click', async () => {
-      await saveActividadRow(tr);
+    grupos.get(key).actividades.push(row);
+  });
+
+  Array.from(grupos.values()).forEach((grupo) => {
+    const details = document.createElement('details');
+    details.open = false;
+    const summary = document.createElement('summary');
+    const summaryContent = document.createElement('div');
+    summaryContent.className = 'activities-summary';
+    const codeSpan = document.createElement('span');
+    codeSpan.className = 'code';
+    codeSpan.textContent = grupo.materiaCode || 'Sin código';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'name';
+    nameSpan.textContent = grupo.materiaName || 'Sin nombre';
+    const countSpan = document.createElement('span');
+    countSpan.className = 'count';
+    countSpan.textContent = `${grupo.actividades.length} actividad(es)`;
+    summaryContent.appendChild(codeSpan);
+    summaryContent.appendChild(document.createTextNode(' - '));
+    summaryContent.appendChild(nameSpan);
+    summaryContent.appendChild(countSpan);
+    summary.appendChild(summaryContent);
+    details.appendChild(summary);
+
+    const list = document.createElement('div');
+    list.className = 'activities-list';
+
+    grupo.actividades.forEach((row) => {
+      const actividadCode = row?.[fieldMap.actividadCode] ?? '';
+      const actividadName = row?.[fieldMap.actividadName] ?? '';
+
+      const rowEl = document.createElement('div');
+      rowEl.className = 'activity-row';
+      rowEl.dataset.identityField = row?.id !== undefined && row?.id !== null ? 'id' : '';
+      rowEl.dataset.identityValue = row?.id !== undefined && row?.id !== null ? row.id : '';
+      rowEl.dataset.materiaField = fieldMap.materiaCode;
+      rowEl.dataset.materiaValue = grupo.materiaCode ?? '';
+      rowEl.dataset.actividadField = fieldMap.actividadCode;
+      rowEl.dataset.actividadValue = actividadCode ?? '';
+      rowEl.dataset.nameField = fieldMap.actividadName;
+
+      const info = document.createElement('div');
+      info.className = 'activity-row-info';
+      const codeLabel = document.createElement('span');
+      codeLabel.className = 'code';
+      codeLabel.textContent = actividadCode || '—';
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.value = actividadName ?? '';
+      nameInput.dataset.field = 'actividad-nombre';
+      nameInput.dataset.original = actividadName ?? '';
+      nameInput.disabled = true;
+
+      info.appendChild(codeLabel);
+      info.appendChild(document.createTextNode(' - '));
+      info.appendChild(nameInput);
+
+      const actions = document.createElement('div');
+      actions.className = 'activity-row-actions';
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'secondary';
+      editButton.textContent = 'Editar';
+      const saveButton = document.createElement('button');
+      saveButton.type = 'button';
+      saveButton.textContent = 'Guardar';
+      saveButton.hidden = true;
+      const cancelButton = document.createElement('button');
+      cancelButton.type = 'button';
+      cancelButton.className = 'secondary';
+      cancelButton.textContent = 'Cancelar';
+      cancelButton.hidden = true;
+
+      editButton.addEventListener('click', () => {
+        nameInput.disabled = false;
+        nameInput.focus();
+        editButton.hidden = true;
+        saveButton.hidden = false;
+        cancelButton.hidden = false;
+      });
+
+      cancelButton.addEventListener('click', () => {
+        nameInput.value = nameInput.dataset.original ?? '';
+        nameInput.disabled = true;
+        editButton.hidden = false;
+        saveButton.hidden = true;
+        cancelButton.hidden = true;
+      });
+
+      saveButton.addEventListener('click', async () => {
+        const saved = await saveActividadRow(rowEl);
+        if (saved) {
+          nameInput.disabled = true;
+          editButton.hidden = false;
+          saveButton.hidden = true;
+          cancelButton.hidden = true;
+        }
+      });
+
+      actions.appendChild(editButton);
+      actions.appendChild(saveButton);
+      actions.appendChild(cancelButton);
+
+      rowEl.appendChild(info);
+      rowEl.appendChild(actions);
+      list.appendChild(rowEl);
     });
-    activitiesTableBodyEl.appendChild(tr);
+
+    details.appendChild(list);
+    activitiesAccordionEl.appendChild(details);
   });
 }
 
@@ -969,24 +1103,36 @@ async function saveActividadRow(rowEl) {
   }
   const identityField = rowEl.dataset.identityField;
   const identityValue = rowEl.dataset.identityValue;
-  const input = rowEl.querySelector('input[data-field="actividad"]');
-  if (!identityField || !input) return;
+  const materiaField = rowEl.dataset.materiaField;
+  const materiaValue = rowEl.dataset.materiaValue;
+  const actividadField = rowEl.dataset.actividadField;
+  const actividadValue = rowEl.dataset.actividadValue;
+  const nameField = rowEl.dataset.nameField || 'actividad';
+  const input = rowEl.querySelector('input[data-field="actividad-nombre"]');
+  if (!input) return false;
   const currentValue = normalizeInputValue(input.value);
   const originalValue = normalizeInputValue(input.dataset.original ?? '');
   if (currentValue === originalValue) {
     showActivitiesMessage('No hay cambios para guardar.', false);
-    return;
+    return false;
   }
-  const { error } = await supabaseClient
-    .from(table)
-    .update({ actividad: currentValue })
-    .eq(identityField, identityValue);
+  let query = supabaseClient.from(table).update({ [nameField]: currentValue });
+  if (identityField && identityValue) {
+    query = query.eq(identityField, identityValue);
+  } else if (materiaField && actividadField) {
+    query = query.eq(materiaField, materiaValue).eq(actividadField, actividadValue);
+  } else {
+    showActivitiesMessage('No se pudo identificar la actividad para guardar.', true);
+    return false;
+  }
+  const { error } = await query;
   if (error) {
     showActivitiesMessage(mapSupabaseError(error), true);
-    return;
+    return false;
   }
   input.dataset.original = input.value;
   showActivitiesMessage('Actividad actualizada.', false);
+  return true;
 }
 
 async function handleActivityCreateSubmit(event) {
@@ -1000,22 +1146,33 @@ async function handleActivityCreateSubmit(event) {
     updateActivityCreateStatus('No hay tabla de actividades configurada.', true);
     return;
   }
-  const codigoSerie = normalizeInputValue(activityCreateCodigoEl.value);
-  const actividad = normalizeInputValue(activityCreateNombreEl.value);
-  if (!codigoSerie || !actividad) {
-    updateActivityCreateStatus('Completa código de serie y actividad.', true);
+  const codigoMateria = normalizeInputValue(activityCreateCodigoMateriaEl.value);
+  const nombreMateria = normalizeInputValue(activityCreateNombreMateriaEl.value);
+  const codigoActividad = normalizeInputValue(activityCreateCodigoActividadEl.value);
+  const actividadNombre = normalizeInputValue(activityCreateNombreEl.value);
+  if (!codigoMateria || !codigoActividad || !actividadNombre) {
+    updateActivityCreateStatus('Completa códigos de materia/actividad y nombre.', true);
     return;
   }
+  const fieldMap = getActivityFieldMap();
   updateActivityCreateStatus('Guardando actividad...', false);
-  const { error } = await supabaseClient
-    .from(table)
-    .insert([{ cod: codigoSerie, actividad }]);
+  const payload = {
+    [fieldMap.materiaCode]: codigoMateria,
+    [fieldMap.actividadCode]: codigoActividad,
+    [fieldMap.actividadName]: actividadNombre,
+  };
+  if (nombreMateria) {
+    payload[fieldMap.materiaName] = nombreMateria;
+  }
+  const { error } = await supabaseClient.from(table).insert([payload]);
   if (error) {
     updateActivityCreateStatus(mapSupabaseError(error), true);
     return;
   }
   updateActivityCreateStatus('Actividad guardada.', false);
-  activityCreateCodigoEl.value = '';
+  activityCreateCodigoMateriaEl.value = '';
+  activityCreateNombreMateriaEl.value = '';
+  activityCreateCodigoActividadEl.value = '';
   activityCreateNombreEl.value = '';
   await loadActividades(table);
 }
