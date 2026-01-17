@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.14.2
+
+- Se ajustó el visor de actividades para considerar el nombre desde la columna `actividades`.
+- Se actualizó la etiqueta de la columna de actividades en la vista desplegada.
+- Se actualizó la versión visible de la app.
+
 ## v0.14.1
 
 - Se aseguró que el visor de actividades cargue en vista colapsada por defecto.

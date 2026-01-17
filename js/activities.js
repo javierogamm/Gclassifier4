@@ -145,7 +145,7 @@ function getMateriaLabel(row) {
 }
 
 function getActividadLabel(row) {
-  const raw = row?.actividad ?? row?.nombre_actividad ?? '';
+  const raw = row?.actividades ?? row?.actividad ?? row?.nombre_actividad ?? '';
   return raw === null || raw === undefined ? '' : String(raw).trim();
 }
 
@@ -330,7 +330,7 @@ function renderExpanded(groups) {
     <thead>
       <tr>
         <th>codigo_actividades</th>
-        <th>actividad</th>
+        <th>actividades</th>
         <th>codigo_materia</th>
         <th>materia</th>
         <th></th>
