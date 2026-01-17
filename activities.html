@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visor de actividades</title>
+    <style>
+      :root {
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: #1f2a37;
+        background: #ffffff;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #ffffff;
+      }
+
+      .app-shell {
+        transform: scale(0.85);
+        transform-origin: top left;
+        width: calc(100% / 0.85);
+      }
+
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+      }
+
+      .header-main {
+        display: grid;
+        gap: 8px;
+      }
+
+      .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .header-status {
+        margin-left: auto;
+        text-align: right;
+        display: grid;
+        gap: 6px;
+        min-width: 220px;
+      }
+
+      .card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 16px;
+        border: 1px solid #d0d7e2;
+        box-shadow: none;
+        margin-bottom: 16px;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+
+      .status[data-state='ok'] {
+        color: #047857;
+      }
+
+      .status[data-state='warning'] {
+        color: #b45309;
+      }
+
+      .status[data-state='error'] {
+        color: #b91c1c;
+      }
+
+      .badge {
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #e6eaf0;
+      }
+
+      button,
+      .link-button {
+        background: #5a6f86;
+        color: #ffffff;
+        border: none;
+        border-radius: 4px;
+        padding: 9px 16px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      button.secondary,
+      .link-button.secondary {
+        background: #e6eaf0;
+        color: #1f2a37;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+
+      .filters label {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .filters input {
+        border-radius: 4px;
+        border: 1px solid #5b6b84;
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
+      .muted {
+        color: #58677a;
+      }
+
+      .warning {
+        background: #fef7e6;
+        border: 1px solid #f5d39a;
+        color: #9a3412;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+      }
+
+      .error {
+        background: #fdeeee;
+        border: 1px solid #f3bcbc;
+        color: #b91c1c;
+        padding: 12px;
+        border-radius: 8px;
+      }
+
+      .results-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .view-toggle {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .view-toggle button.active {
+        background: #1f4d78;
+        color: #ffffff;
+      }
+
+      .activity-group {
+        border: 1px solid #d0d7e2;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+
+      .activity-group summary {
+        list-style: none;
+        cursor: pointer;
+      }
+
+      .activity-group summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .activity-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .activity-summary-title {
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .activity-list {
+        display: grid;
+        gap: 8px;
+        padding: 12px 0 4px 0;
+      }
+
+      .activity-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 8px;
+      }
+
+      .activity-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .activity-name {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e2e8f0;
+        text-align: left;
+        padding: 8px;
+      }
+
+      th {
+        background: #eef2f7;
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.45);
+        padding: 24px;
+      }
+
+      .modal[hidden] {
+        display: none;
+      }
+
+      .modal-content {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px;
+        max-width: 640px;
+        width: 100%;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+        display: grid;
+        gap: 16px;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+    </style>
+    <script src="/api/env.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header>
+        <div class="header-main">
+          <h1>Visor de actividades</h1>
+          <div class="header-actions">
+            <a class="link-button secondary" href="/">Volver a cuadros</a>
+          </div>
+        </div>
+        <div class="header-status" aria-live="polite">
+          <div class="status" id="status" data-state="warning">
+            <span id="status-icon">⚠️</span>
+            <span id="status-text">Esperando configuración</span>
+            <span class="badge" id="status-badge">ENV</span>
+          </div>
+          <p id="status-detail" class="muted"></p>
+          <div id="message" class="muted"></div>
+          <p class="muted"><strong>Versión:</strong> v0.14.0</p>
+        </div>
+      </header>
+
+      <div id="vercel-warning" class="warning" hidden>
+        Este proyecto está diseñado para Vercel. Verifica que exista el endpoint
+        <code>/api/env.js</code> y que las variables de entorno estén configuradas.
+      </div>
+
+      <section class="card">
+        <div class="results-header">
+          <h2 id="results-title">Actividades: 0</h2>
+          <div class="view-toggle">
+            <button id="view-collapsed" class="secondary active" type="button">Colapsada</button>
+            <button id="view-expanded" class="secondary" type="button">Desplegada</button>
+          </div>
+        </div>
+        <form id="filter-form" class="filters">
+          <label>
+            Buscar código_actividades
+            <input id="filter-codigo" type="search" placeholder="Ej: ACT-001" />
+          </label>
+          <label>
+            Buscar materia
+            <input id="filter-materia" type="search" placeholder="Ej: Gestión" />
+          </label>
+          <label>
+            Buscar actividad
+            <input id="filter-actividad" type="search" placeholder="Ej: Archivo" />
+          </label>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="submit">Aplicar filtros</button>
+            <button type="button" id="clear-filters" class="secondary">Limpiar</button>
+          </div>
+        </form>
+        <div id="results"></div>
+      </section>
+
+      <div id="detail-modal" class="modal" hidden>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
+          <div class="modal-header">
+            <h3 id="detail-modal-title">Detalle de actividad</h3>
+            <button id="detail-modal-close" class="secondary" type="button">Cerrar</button>
+          </div>
+          <div id="detail-modal-body"></div>
+        </div>
+      </div>
+
+      <script type="module" src="/js/activities.js"></script>
+    </div>
+  </body>
+</html>

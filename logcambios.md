@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.14.0
+
+- Se añadió el visor de actividades con vistas colapsada/desplegada, filtros por código, materia y actividad, y navegación desde el catálogo.
+- Se incorporó un modal de detalles de actividad que lista series vinculadas y su modelo asociado.
+- Se actualizó la versión visible de la app.
+
 ## v0.13.0
 
 - Se ajustó el encabezado para eliminar la descripción, mover la versión bajo el ping y actualizar el estilo general según el pantallazo.

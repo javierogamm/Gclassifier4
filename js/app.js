@@ -278,7 +278,7 @@ function renderCatalog(entities) {
           Seleccionar cuadro
         </button>
         <button class="secondary" type="button">Traducciones</button>
-        <button class="secondary" type="button">Actividades</button>
+        <button class="secondary" type="button" data-action="actividades">Actividades</button>
         <button class="secondary" type="button">Exportar CSV RPA</button>
       </div>
     `;
@@ -291,6 +291,12 @@ function renderCatalog(entities) {
       const table = target.getAttribute('data-table');
       const label = target.getAttribute('data-label');
       await openModelModal(table, label);
+    });
+  });
+
+  catalogEl.querySelectorAll('button[data-action=\"actividades\"]').forEach((button) => {
+    button.addEventListener('click', () => {
+      window.location.assign('/activities.html');
     });
   });
 }
