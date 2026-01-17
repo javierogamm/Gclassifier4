@@ -296,7 +296,7 @@ function renderCatalog(entities) {
 
   catalogEl.querySelectorAll('button[data-action=\"actividades\"]').forEach((button) => {
     button.addEventListener('click', () => {
-      window.location.assign('/activities.html');
+      window.location.href = '/activities.html';
     });
   });
 }

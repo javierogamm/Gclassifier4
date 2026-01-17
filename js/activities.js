@@ -498,6 +498,7 @@ function init() {
   const env = window.ENV;
 
   updateResultsTitle(0);
+  setView('collapsed');
 
   if (!env) {
     vercelWarningEl.hidden = false;

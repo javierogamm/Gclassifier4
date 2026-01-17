@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.14.1
+
+- Se aseguró que el visor de actividades cargue en vista colapsada por defecto.
+- Se ajustó la navegación desde el botón Actividades para permanecer en la nueva página.
+- Se actualizó la versión visible de la app.
+
 ## v0.14.0
 
 - Se añadió el visor de actividades con vistas colapsada/desplegada, filtros por código, materia y actividad, y navegación desde el catálogo.
