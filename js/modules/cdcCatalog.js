@@ -31,6 +31,7 @@ export const DEFAULT_CDC_CATALOG = {
           'accion_dictaminada',
           'ejecucion',
           'motivacion',
+          'last_change',
           'created_at',
         ],
       },

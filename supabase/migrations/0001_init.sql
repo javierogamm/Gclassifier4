@@ -36,6 +36,7 @@ create table if not exists public.series_carga (
   accion_dictaminada text,
   ejecucion text,
   motivacion text,
+  last_change timestamptz default now(),
   created_at timestamptz default now()
 );
 

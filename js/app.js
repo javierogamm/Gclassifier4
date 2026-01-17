@@ -460,11 +460,11 @@ function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
       <div class="result-title">
         ${hierarchyMarkup}
         <span class="codigo-serie-badge">${codigoSerie}</span>
+        <span class="result-separator">-</span>
         <span class="titulo-serie">${tituloSerie}</span>
+        <span class="result-separator">-</span>
+        <span class="categoria-serie">${categoria}</span>
         <span class="toggle-icon" aria-hidden="true"></span>
-      </div>
-      <div class="result-meta">
-        <span><strong>Categoría:</strong> ${categoria}</span>
       </div>
     </div>
     <button type="button" class="detail-button">Ver detalles</button>
@@ -477,11 +477,10 @@ function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
     openDetailDrawer(row, tituloSerie);
   });
 
-  const body = document.createElement('div');
-  body.className = 'result-body';
-  if (!node.children || node.children.length === 0) {
-    body.innerHTML = '<p class="muted">Sin elementos asociados.</p>';
-  } else {
+  details.appendChild(summary);
+  if (node.children && node.children.length > 0) {
+    const body = document.createElement('div');
+    body.className = 'result-body';
     const childWrapper = document.createElement('div');
     childWrapper.className = 'child-list';
     node.children.forEach((childNode, index) => {
@@ -489,10 +488,8 @@ function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
       childWrapper.appendChild(createHierarchyDetails(childNode, depth + 1, childLabel));
     });
     body.appendChild(childWrapper);
+    details.appendChild(body);
   }
-
-  details.appendChild(summary);
-  details.appendChild(body);
 
   return details;
 }
@@ -671,6 +668,7 @@ async function handleCreateSubmit(event) {
   const payload = {
     codigo_serie: codigoSerie,
     titulo_serie: tituloSerie,
+    last_change: new Date().toISOString(),
   };
   if (categoria !== null) {
     payload.categoria = categoria;
@@ -810,9 +808,10 @@ async function openDetailDrawer(row, title) {
     { key: 'titulo_serie', label: 'titulo_serie', value: row?.titulo_serie },
     { key: 'categoria', label: 'categoria', value: row?.categoria },
     { key: 'actividad', label: 'actividad', value: actividad },
+    { key: 'last_change', label: 'last_change', value: row?.last_change, readOnly: true },
   ];
 
-  fields.forEach(({ key, label, value }) => {
+  fields.forEach(({ key, label, value, readOnly }) => {
     const item = document.createElement('label');
     item.className = 'detail-item';
     const labelEl = document.createElement('span');
@@ -824,6 +823,9 @@ async function openDetailDrawer(row, title) {
     input.name = key;
     input.value = value === null || value === undefined ? '' : String(value);
     input.placeholder = '—';
+    if (readOnly) {
+      input.readOnly = true;
+    }
     input.dataset.original = input.value;
     item.appendChild(labelEl);
     item.appendChild(input);
@@ -863,6 +865,9 @@ async function saveDetailChanges() {
     const key = input.name;
     const currentValue = normalizeInputValue(input.value);
     const originalValue = normalizeInputValue(input.dataset.original ?? '');
+    if (key === 'last_change') {
+      return;
+    }
     if (key === 'actividad') {
       if (currentValue !== originalValue) {
         actividadUpdate = currentValue;
@@ -889,10 +894,20 @@ async function saveDetailChanges() {
   updateDetailStatus('Guardando cambios...', false);
 
   try {
+    const lastChange = new Date().toISOString();
     if (hasMainUpdates) {
+      updates.last_change = lastChange;
       const { error } = await supabaseClient
         .from(activeTable)
         .update(updates)
+        .eq(identityField, identityValue);
+      if (error) {
+        throw error;
+      }
+    } else if (shouldUpdateActividad) {
+      const { error } = await supabaseClient
+        .from(activeTable)
+        .update({ last_change: lastChange })
         .eq(identityField, identityValue);
       if (error) {
         throw error;
@@ -910,6 +925,9 @@ async function saveDetailChanges() {
     }
 
     inputs.forEach((input) => {
+      if (input.name === 'last_change') {
+        input.value = lastChange;
+      }
       input.dataset.original = input.value;
     });
 
