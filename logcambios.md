@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.18.0
+
+- Se reforzó el modo tabla en gestión de actividades para mostrar materias y actividades, sustituyendo el acordeón cuando se activa la vista.
+- Se habilitó la edición del código y nombre de actividad en el modal, actualizando la vista y la consulta de series vinculadas por el campo actividad.
+- Se añadió scroll al listado de series vinculadas en el modal y se actualizó la versión visible de la app.
+
 ## v0.17.0
 
 - Se agregó control para desplegar/contraer todas las materias en actividades y alternar entre vista acordeón y modo tabla (solo actividades).

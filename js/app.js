@@ -1128,7 +1128,7 @@ function renderActividadesAccordion() {
   });
 }
 
-async function updateActividadName(context, currentValue, originalValue) {
+async function updateActividadData(context, updatedValues, originalValues) {
   if (!supabaseClient) {
     updateActivityEditStatus('Configura Supabase antes de guardar.', true);
     return false;
@@ -1138,11 +1138,18 @@ async function updateActividadName(context, currentValue, originalValue) {
     updateActivityEditStatus('No hay tabla de actividades configurada.', true);
     return false;
   }
-  if (currentValue === originalValue) {
+  const updates = {};
+  if (updatedValues.name !== originalValues.name) {
+    updates[context.nameField] = updatedValues.name;
+  }
+  if (updatedValues.code !== originalValues.code) {
+    updates[context.actividadField] = updatedValues.code;
+  }
+  if (!Object.keys(updates).length) {
     updateActivityEditStatus('No hay cambios para guardar.', false);
     return false;
   }
-  let query = supabaseClient.from(table).update({ [context.nameField]: currentValue });
+  let query = supabaseClient.from(table).update(updates);
   if (context.identityField && context.identityValue) {
     query = query.eq(context.identityField, context.identityValue);
   } else if (context.materiaField && context.actividadField) {
@@ -1176,7 +1183,7 @@ function renderActividadesTable() {
   table.className = 'data-table';
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  ['Código de actividad', 'Nombre de actividad', 'Acciones'].forEach((label) => {
+  ['Código de materia', 'Nombre de materia', 'Código de actividad', 'Nombre de actividad', 'Acciones'].forEach((label) => {
     const th = document.createElement('th');
     th.textContent = label;
     headerRow.appendChild(th);
@@ -1193,8 +1200,13 @@ function renderActividadesTable() {
     tr.className = 'activity-row';
     setActivityRowDataset(tr, rowData);
 
+    const materiaCodeCell = document.createElement('td');
+    materiaCodeCell.textContent = rowData.materiaValue || '—';
+    const materiaNameCell = document.createElement('td');
+    materiaNameCell.textContent = rowData.materiaName || '—';
     const codeCell = document.createElement('td');
     codeCell.textContent = rowData.actividadValue || '—';
+    codeCell.className = 'activity-code';
     const nameCell = document.createElement('td');
     nameCell.textContent = rowData.actividadName || '—';
     nameCell.className = 'activity-name';
@@ -1206,6 +1218,8 @@ function renderActividadesTable() {
     editButton.addEventListener('click', () => openActivityEditModal(tr));
     actionCell.appendChild(editButton);
 
+    tr.appendChild(materiaCodeCell);
+    tr.appendChild(materiaNameCell);
     tr.appendChild(codeCell);
     tr.appendChild(nameCell);
     tr.appendChild(actionCell);
@@ -1216,18 +1230,23 @@ function renderActividadesTable() {
   activitiesTableEl.appendChild(table);
 }
 
-function updateActivityRowDisplay(rowEl, newName) {
+function updateActivityRowDisplay(rowEl, newCode, newName) {
+  rowEl.dataset.actividadValue = newCode ?? '';
   rowEl.dataset.actividadName = newName ?? '';
   if (rowEl.tagName.toLowerCase() === 'tr') {
+    const codeCell = rowEl.querySelector('.activity-code');
+    if (codeCell) codeCell.textContent = newCode || '—';
     const nameCell = rowEl.querySelector('.activity-name');
     if (nameCell) nameCell.textContent = newName || '—';
     return;
   }
   const nameLabel = rowEl.querySelector('.activity-row-info .name');
+  const codeLabel = rowEl.querySelector('.activity-row-info .code');
+  if (codeLabel) codeLabel.textContent = newCode || '—';
   if (nameLabel) nameLabel.textContent = newName || '—';
 }
 
-function updateActividadesRowsData(context, newName) {
+function updateActividadesRowsData(context, newCode, newName) {
   if (!context?.nameField) return;
   const matchById = context.identityField && context.identityValue;
   const matchByKeys = context.materiaField && context.actividadField;
@@ -1244,6 +1263,7 @@ function updateActividadesRowsData(context, newName) {
     return false;
   });
   if (targetIndex >= 0) {
+    actividadesRows[targetIndex][context.actividadField] = newCode;
     actividadesRows[targetIndex][context.nameField] = newName;
   }
 }
@@ -1265,12 +1285,15 @@ function openActivityEditModal(rowEl) {
   activityEditContext = context;
   if (activityEditCodigoMateriaEl) activityEditCodigoMateriaEl.value = context.materiaValue || '';
   if (activityEditNombreMateriaEl) activityEditNombreMateriaEl.value = context.materiaName || '';
-  if (activityEditCodigoActividadEl) activityEditCodigoActividadEl.value = context.actividadValue || '';
+  if (activityEditCodigoActividadEl) {
+    activityEditCodigoActividadEl.value = context.actividadValue || '';
+    activityEditCodigoActividadEl.dataset.original = context.actividadValue || '';
+  }
   activityEditNombreEl.value = context.actividadName || '';
   activityEditNombreEl.dataset.original = context.actividadName || '';
   updateActivityEditStatus('', false);
   activityEditModalEl.hidden = false;
-  loadLinkedSeries(context.actividadName || context.actividadValue);
+  loadLinkedSeries(context.actividadName, context.actividadValue);
 }
 
 function closeActivityEditModal() {
@@ -1282,20 +1305,28 @@ function closeActivityEditModal() {
 async function handleActivityEditSubmit(event) {
   event.preventDefault();
   if (!activityEditContext) return;
-  const currentValue = normalizeInputValue(activityEditNombreEl.value);
-  const originalValue = normalizeInputValue(activityEditNombreEl.dataset.original ?? '');
-  if (!currentValue) {
-    updateActivityEditStatus('El nombre de la actividad es obligatorio.', true);
+  const currentName = normalizeInputValue(activityEditNombreEl.value);
+  const originalName = normalizeInputValue(activityEditNombreEl.dataset.original ?? '');
+  const currentCode = normalizeInputValue(activityEditCodigoActividadEl?.value ?? '');
+  const originalCode = normalizeInputValue(activityEditCodigoActividadEl?.dataset.original ?? '');
+  if (!currentName || !currentCode) {
+    updateActivityEditStatus('El código y el nombre de la actividad son obligatorios.', true);
     return;
   }
   updateActivityEditStatus('Guardando cambios...', false);
-  const saved = await updateActividadName(activityEditContext, currentValue, originalValue);
+  const saved = await updateActividadData(
+    activityEditContext,
+    { code: currentCode, name: currentName },
+    { code: originalCode, name: originalName }
+  );
   if (!saved) return;
-  activityEditNombreEl.dataset.original = currentValue;
-  updateActivityRowDisplay(activityEditContext.rowEl, currentValue);
-  updateActividadesRowsData(activityEditContext, currentValue);
-  const targetValue = currentValue || activityEditContext.actividadValue;
-  loadLinkedSeries(targetValue);
+  activityEditNombreEl.dataset.original = currentName;
+  if (activityEditCodigoActividadEl) activityEditCodigoActividadEl.dataset.original = currentCode;
+  updateActivityRowDisplay(activityEditContext.rowEl, currentCode, currentName);
+  updateActividadesRowsData(activityEditContext, currentCode, currentName);
+  activityEditContext.actividadValue = currentCode;
+  activityEditContext.actividadName = currentName;
+  loadLinkedSeries(currentName, currentCode);
 }
 
 function getLinkedSeriesFieldMap(rows) {
@@ -1348,22 +1379,29 @@ function renderLinkedSeriesTable(rows) {
   activityLinkedTableEl.appendChild(table);
 }
 
-async function loadLinkedSeries(actividadValue) {
+async function loadLinkedSeries(actividadName, actividadCode) {
   if (!supabaseClient) {
     updateLinkedSeriesStatus('Configura Supabase antes de consultar series vinculadas.', true);
     renderLinkedSeriesTable([]);
     return;
   }
-  if (!actividadValue) {
+  const normalizedName = normalizeInputValue(actividadName);
+  const normalizedCode = normalizeInputValue(actividadCode);
+  const hasName = Boolean(normalizedName);
+  const hasCode = Boolean(normalizedCode);
+  if (!hasName && !hasCode) {
     updateLinkedSeriesStatus('No se pudo identificar la actividad para vinculación.', true);
     renderLinkedSeriesTable([]);
     return;
   }
   updateLinkedSeriesStatus('Consultando series vinculadas...', false);
-  const { data, error } = await supabaseClient
-    .from('series_vinculacion')
-    .select('*')
-    .eq('actividad', actividadValue);
+  let query = supabaseClient.from('series_vinculacion').select('*');
+  if (hasName && hasCode && normalizedName !== normalizedCode) {
+    query = query.in('actividad', [normalizedName, normalizedCode]);
+  } else {
+    query = query.eq('actividad', hasName ? normalizedName : normalizedCode);
+  }
+  const { data, error } = await query;
   if (error) {
     updateLinkedSeriesStatus(mapSupabaseError(error), true);
     renderLinkedSeriesTable([]);
