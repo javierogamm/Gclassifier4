@@ -181,6 +181,7 @@
         justify-content: center;
         background: rgba(15, 23, 42, 0.45);
         padding: 24px;
+        z-index: 1000;
       }
 
       .modal[hidden] {
@@ -417,6 +418,7 @@
         align-items: center;
         background: rgba(15, 23, 42, 0.45);
         padding: 24px;
+        z-index: 1000;
       }
 
       .drawer[hidden] {
@@ -710,7 +712,7 @@
           </div>
           <p id="status-detail" class="muted"></p>
           <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.18.0</p>
+          <p class="muted"><strong>Versión:</strong> v0.19.0</p>
         </div>
       </header>
 
@@ -786,24 +788,25 @@
         </form>
         <div id="activities-accordion" class="activities-accordion"></div>
       </section>
+    </div>
 
-      <div id="activity-edit-modal" class="modal" hidden>
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="activity-edit-title">
-          <div class="modal-header">
-            <h3 id="activity-edit-title">Editar actividad</h3>
-            <button id="activity-edit-close" class="secondary" type="button">Cerrar</button>
-          </div>
-          <form id="activity-edit-form" class="form-grid">
-            <div id="activity-edit-fields" class="form-grid"></div>
-            <div class="form-actions">
-              <button type="submit">Guardar cambios</button>
-              <span id="activity-edit-status" class="form-status"></span>
-            </div>
-          </form>
+    <div id="activity-edit-modal" class="modal" hidden>
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="activity-edit-title">
+        <div class="modal-header">
+          <h3 id="activity-edit-title">Editar actividad</h3>
+          <button id="activity-edit-close" class="secondary" type="button">Cerrar</button>
         </div>
+        <form id="activity-edit-form" class="form-grid">
+          <div id="activity-edit-fields" class="form-grid"></div>
+          <div class="form-actions">
+            <button type="submit">Guardar cambios</button>
+            <span id="activity-edit-status" class="form-status"></span>
+          </div>
+        </form>
       </div>
+    </div>
 
-      <div id="model-modal" class="modal" hidden>
+    <div id="model-modal" class="modal" hidden>
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="model-modal-title">
         <div class="modal-header">
           <h3 id="model-modal-title">Selecciona un modelo</h3>
@@ -814,7 +817,7 @@
       </div>
     </div>
 
-      <div id="create-modal" class="modal" hidden>
+    <div id="create-modal" class="modal" hidden>
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
         <div class="modal-header">
           <h3 id="create-modal-title">Crear nuevo elemento</h3>
@@ -858,7 +861,7 @@
       </div>
     </div>
 
-      <div id="position-modal" class="modal" hidden>
+    <div id="position-modal" class="modal" hidden>
       <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="position-modal-title">
         <div class="modal-header">
           <h3 id="position-modal-title">Selecciona una posición</h3>
@@ -874,7 +877,7 @@
       </div>
     </div>
 
-      <div id="detail-drawer" class="drawer" hidden>
+    <div id="detail-drawer" class="drawer" hidden>
       <div class="drawer-content" role="dialog" aria-modal="true" aria-labelledby="detail-drawer-title">
         <div class="modal-header">
           <h3 id="detail-drawer-title">Detalles del registro</h3>
@@ -890,7 +893,6 @@
       </div>
     </div>
 
-      <script type="module" src="/js/app.js"></script>
-    </div>
+    <script type="module" src="/js/app.js"></script>
   </body>
 </html>
