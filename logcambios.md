@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.31.0
+
+- Se añadió el botón "Histórico de cambios" en el detalle de series para usuarios admin, con modal dedicado.
+- El histórico lista los cambios registrados en `carga_historic` e incluye acción de revertir valores.
+- La reversión aplica los valores guardados y registra un nuevo apunte en `carga_historic`.
+- Se actualizó la versión visible de la app.
+
 ## v0.30.0
 
 - Se añadió el registro desde el front en `carga_historic` para cambios en `series_carga`, guardando usuario y valores previos editados.
