@@ -41,3 +41,15 @@ El esquema usa dos tablas principales en el esquema `public`:
 - **motivacion** (text)
 - **last_change** (timestamptz)
 - **created_at** (timestamptz)
+
+## series_carga_historico
+
+- **id** (uuid, PK)
+- **created_at** (timestamptz)
+- **original_codigo_serie** (text)
+- **original_titulo_serie** (text)
+- **change_date** (timestamptz)
+- **change_user** (text)
+- **original_id** (uuid)
+- **original_categoria** (text)
+- **original_posicion** (text)
