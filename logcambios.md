@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.29.0
+
+- Se añadió el registro automático de histórico para cambios en `series_carga`, guardando los valores previos en `series_carga_historico`.
+- Se incluyó la función y trigger de auditoría junto con la definición de la tabla de histórico.
+- Se actualizó la versión visible de la app.
+
 ## v0.28.0
 
 - Se añadió un botón para exportar en PDF la visualización del acordeón con el modelo e idioma activos.
