@@ -33,22 +33,28 @@
       }
 
       .header-main {
-        display: grid;
-        gap: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
       }
 
-      .header-status {
-        margin-left: auto;
-        text-align: right;
+      .connection-status {
         display: grid;
-        gap: 6px;
-        min-width: 220px;
+        gap: 4px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid #d0d7e2;
+        background: #f8fafc;
+        font-size: 12px;
+        max-width: 220px;
       }
 
       .header-auth {
         display: grid;
         gap: 8px;
         justify-items: end;
+        margin-left: auto;
       }
 
       .header-auth-actions {
@@ -70,8 +76,9 @@
       .status {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         font-weight: 600;
+        font-size: 12px;
       }
 
       .status[data-state='ok'] {
@@ -91,6 +98,11 @@
         padding: 4px 8px;
         border-radius: 999px;
         background: #e6eaf0;
+      }
+
+      .version-text {
+        font-size: 12px;
+        color: #475569;
       }
 
       button {
@@ -715,24 +727,21 @@
     <div class="app-shell">
       <header>
         <div class="header-main">
+          <div class="connection-status" aria-live="polite">
+            <div class="status" id="status" data-state="warning">
+              <span id="status-icon">⚠️</span>
+              <span id="status-text">Esperando configuración</span>
+            </div>
+            <p class="version-text"><strong>Versión:</strong> v0.21.0</p>
+          </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
-        <div class="header-status" aria-live="polite">
-          <div class="header-auth">
-            <span id="login-user" class="muted">Sesión: sin iniciar</span>
-            <div class="header-auth-actions">
-              <button id="login-button" type="button">Login</button>
-              <button id="logout-button" class="secondary" type="button" hidden>Salir</button>
-            </div>
+        <div class="header-auth">
+          <span id="login-user" class="muted">Sesión: sin iniciar</span>
+          <div class="header-auth-actions">
+            <button id="login-button" type="button">Login</button>
+            <button id="logout-button" class="secondary" type="button" hidden>Salir</button>
           </div>
-          <div class="status" id="status" data-state="warning">
-            <span id="status-icon">⚠️</span>
-            <span id="status-text">Esperando configuración</span>
-            <span class="badge" id="status-badge">ENV</span>
-          </div>
-          <p id="status-detail" class="muted"></p>
-          <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.20.0</p>
         </div>
       </header>
 
@@ -740,8 +749,7 @@
       Este proyecto está diseñado para Vercel. Verifica que exista el endpoint
       <code>/api/env.js</code> y que las variables de entorno estén configuradas.
     </div>
-
-      <button id="ping-button" class="secondary" type="button" hidden>Probar conexión</button>
+      <div id="message" class="muted"></div>
 
       <main id="cuadros-view">
         <section class="card">
@@ -802,7 +810,7 @@
             <input id="activity-create-nombre" type="text" placeholder="Ej: Archivo" required />
           </label>
           <div class="activities-actions">
-            <button type="submit">Guardar actividad</button>
+            <button id="activity-create-submit" type="submit">Guardar actividad</button>
             <span id="activity-create-status" class="form-status"></span>
           </div>
         </form>
@@ -819,7 +827,7 @@
         <form id="activity-edit-form" class="form-grid">
           <div id="activity-edit-fields" class="form-grid"></div>
           <div class="form-actions">
-            <button type="submit">Guardar cambios</button>
+            <button id="activity-edit-submit" type="submit">Guardar cambios</button>
             <span id="activity-edit-status" class="form-status"></span>
           </div>
         </form>
