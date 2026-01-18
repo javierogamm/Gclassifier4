@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.24.0
+
+- Se incorporó la selección de idioma al elegir un modelo con columna `idioma`, mostrando un modal para escoger la versión a visualizar.
+- Se añadieron botones de idioma junto a “Crear elemento” para alternar la vista sin recargar el modelo.
+- Se actualizó la versión visible de la app.
+
 ## v0.23.0
 
 - Se normalizaron los matchings entre tablas para ignorar espacios finales en códigos de serie y nombres de actividad.
