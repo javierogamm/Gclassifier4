@@ -7,6 +7,17 @@ const statusIconEl = document.getElementById('status-icon');
 const statusTextEl = document.getElementById('status-text');
 const statusBadgeEl = document.getElementById('status-badge');
 const statusDetailEl = document.getElementById('status-detail');
+const loginUserEl = document.getElementById('login-user');
+const loginButton = document.getElementById('login-button');
+const logoutButton = document.getElementById('logout-button');
+const loginModalEl = document.getElementById('login-modal');
+const loginModalCloseEl = document.getElementById('login-modal-close');
+const loginFormEl = document.getElementById('login-form');
+const loginNameEl = document.getElementById('login-name');
+const loginPassEl = document.getElementById('login-pass');
+const loginSubmitEl = document.getElementById('login-submit');
+const registerSubmitEl = document.getElementById('register-submit');
+const loginStatusEl = document.getElementById('login-status');
 const pingButton = document.getElementById('ping-button');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
@@ -81,6 +92,7 @@ let activeModelFilter = null;
 let activeRows = [];
 let actividadesRows = [];
 let activityEditContext = null;
+let currentUser = null;
 
 const ACTIVITY_FIELD_CANDIDATES = {
   actividadCode: ['codigo_actividad', 'cod_actividad', 'codigo'],
@@ -140,6 +152,162 @@ function showMessage(message, isError = false) {
   }
   messageEl.textContent = message;
   messageEl.className = isError ? 'error' : 'muted';
+}
+
+function updateLoginStatus(message, isError = false) {
+  if (!loginStatusEl) return;
+  loginStatusEl.textContent = message || '';
+  loginStatusEl.className = isError ? 'form-status error' : 'form-status';
+}
+
+function setAuthUser(user) {
+  currentUser = user;
+  if (!loginUserEl || !loginButton || !logoutButton) return;
+  if (user) {
+    loginUserEl.textContent = `Sesión: ${user.name}`;
+    loginButton.textContent = 'Cambiar';
+    logoutButton.hidden = false;
+    localStorage.setItem('authUser', JSON.stringify(user));
+  } else {
+    loginUserEl.textContent = 'Sesión: sin iniciar';
+    loginButton.textContent = 'Login';
+    logoutButton.hidden = true;
+    localStorage.removeItem('authUser');
+  }
+}
+
+function loadStoredAuthUser() {
+  try {
+    const stored = localStorage.getItem('authUser');
+    if (!stored) return;
+    const parsed = JSON.parse(stored);
+    if (parsed?.name) {
+      setAuthUser({ id: parsed.id, name: parsed.name });
+    }
+  } catch (error) {
+    localStorage.removeItem('authUser');
+  }
+}
+
+function openLoginModal() {
+  if (!loginModalEl) return;
+  loginModalEl.hidden = false;
+  updateLoginStatus('');
+  if (loginNameEl) {
+    loginNameEl.focus();
+  }
+}
+
+function closeLoginModal() {
+  if (!loginModalEl) return;
+  loginModalEl.hidden = true;
+  if (loginFormEl) {
+    loginFormEl.reset();
+  }
+  updateLoginStatus('');
+}
+
+async function handleLogin() {
+  if (!supabaseClient) {
+    updateLoginStatus('Configura Supabase antes de iniciar sesión.', true);
+    return;
+  }
+
+  const name = loginNameEl?.value.trim();
+  const pass = loginPassEl?.value.trim();
+
+  if (!name || !pass) {
+    updateLoginStatus('Completa nombre y contraseña.', true);
+    return;
+  }
+
+  loginSubmitEl.disabled = true;
+  registerSubmitEl.disabled = true;
+  updateLoginStatus('Validando credenciales...', false);
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('users')
+      .select('id, name, pass')
+      .eq('name', name)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data || data.pass !== pass) {
+      updateLoginStatus('Usuario o contraseña incorrecta.', true);
+      return;
+    }
+
+    setAuthUser({ id: data.id, name: data.name });
+    updateLoginStatus('Sesión iniciada.', false);
+    closeLoginModal();
+  } catch (error) {
+    updateLoginStatus(mapSupabaseError(error), true);
+  } finally {
+    loginSubmitEl.disabled = false;
+    registerSubmitEl.disabled = false;
+  }
+}
+
+async function handleRegister() {
+  if (!supabaseClient) {
+    updateLoginStatus('Configura Supabase antes de registrarte.', true);
+    return;
+  }
+
+  const name = loginNameEl?.value.trim();
+  const pass = loginPassEl?.value.trim();
+
+  if (!name || !pass) {
+    updateLoginStatus('Completa nombre y contraseña.', true);
+    return;
+  }
+
+  loginSubmitEl.disabled = true;
+  registerSubmitEl.disabled = true;
+  updateLoginStatus('Registrando usuario...', false);
+
+  try {
+    const { data: existing, error: existingError } = await supabaseClient
+      .from('users')
+      .select('id')
+      .eq('name', name)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    if (existing) {
+      updateLoginStatus('El nombre ya está registrado.', true);
+      return;
+    }
+
+    const payload = { name, pass, created_at: new Date().toISOString() };
+    const { data, error } = await supabaseClient
+      .from('users')
+      .insert(payload)
+      .select('id, name')
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    setAuthUser({ id: data.id, name: data.name });
+    updateLoginStatus('Registro completado.', false);
+    closeLoginModal();
+  } catch (error) {
+    updateLoginStatus(mapSupabaseError(error), true);
+  } finally {
+    loginSubmitEl.disabled = false;
+    registerSubmitEl.disabled = false;
+  }
 }
 
 function showActivitiesMessage(message, isError = false) {
@@ -1551,6 +1719,7 @@ function init() {
   const env = window.ENV;
 
   updateResultsTitle(null, 0);
+  loadStoredAuthUser();
 
   if (!env) {
     vercelWarningEl.hidden = false;
@@ -1593,6 +1762,29 @@ function init() {
 }
 
 pingButton.addEventListener('click', pingSupabase);
+if (loginButton) {
+  loginButton.addEventListener('click', openLoginModal);
+}
+if (logoutButton) {
+  logoutButton.addEventListener('click', () => {
+    setAuthUser(null);
+  });
+}
+if (loginModalCloseEl) {
+  loginModalCloseEl.addEventListener('click', closeLoginModal);
+}
+if (loginFormEl) {
+  loginFormEl.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handleLogin();
+  });
+}
+if (loginSubmitEl) {
+  loginSubmitEl.addEventListener('click', handleLogin);
+}
+if (registerSubmitEl) {
+  registerSubmitEl.addEventListener('click', handleRegister);
+}
 modelModalCloseEl.addEventListener('click', closeModelModal);
 openCreateModalButton.addEventListener('click', openCreateModal);
 createModalCloseEl.addEventListener('click', closeCreateModal);
@@ -1642,6 +1834,13 @@ if (activityEditModalEl) {
     }
   });
 }
+if (loginModalEl) {
+  loginModalEl.addEventListener('click', (event) => {
+    if (event.target === loginModalEl) {
+      closeLoginModal();
+    }
+  });
+}
 modelModalEl.addEventListener('click', (event) => {
   if (event.target === modelModalEl) {
     closeModelModal();
@@ -1673,6 +1872,9 @@ window.addEventListener('keydown', (event) => {
     }
     if (activityEditModalEl && !activityEditModalEl.hidden) {
       closeActivityEditModal();
+    }
+    if (loginModalEl && !loginModalEl.hidden) {
+      closeLoginModal();
     }
   }
 });
