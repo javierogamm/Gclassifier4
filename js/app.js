@@ -1278,6 +1278,10 @@ function filterRowsWithHierarchy(rows, searchFilters) {
   });
 
   const includedIdentities = new Set();
+  const includeDescendants = (node) => {
+    includedIdentities.add(node.identity);
+    node.children.forEach((child) => includeDescendants(child));
+  };
   nodes.forEach((node) => {
     if (!rowMatchesSearchFilters(node.row, normalizedFilters)) return;
     let current = node;
@@ -1285,6 +1289,7 @@ function filterRowsWithHierarchy(rows, searchFilters) {
       includedIdentities.add(current.identity);
       current = current.parent;
     }
+    includeDescendants(node);
   });
 
   return (rows || []).filter((row, index) =>
@@ -1395,6 +1400,12 @@ function renderResults(rows) {
 
   resultsEl.innerHTML = '';
   resultsEl.appendChild(list);
+
+  if (hasSearchFilters(getSearchFilters())) {
+    list.querySelectorAll('details').forEach((detail) => {
+      detail.open = true;
+    });
+  }
 }
 
 function findResultItemElement(identityField, identityValue) {
