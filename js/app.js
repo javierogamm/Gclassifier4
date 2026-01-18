@@ -1670,6 +1670,7 @@ async function openDetailDrawer(row, title) {
     detailDrawerEl.dataset.identityField = '';
     detailDrawerEl.dataset.identityValue = '';
   }
+  detailDrawerEl.dataset.originalId = row?.id ?? '';
   const actividad = await fetchActividadForCodigoSerie(codigoSerie);
   const fields = [
     { key: 'posicion', label: 'posicion', value: row?.posicion },
@@ -2313,6 +2314,15 @@ async function saveDetailChanges() {
   const actividadesTable = getActividadesTableForActive();
   const codigoSerie = detailDrawerEl.dataset.codigoSerie;
   const shouldUpdateActividad = actividadChanged && actividadesTable && codigoSerie;
+  const originalId = detailDrawerEl.dataset.originalId || null;
+  const shouldLogHistory = activeTable === 'series_carga' && hasMainUpdates;
+
+  const getOriginalInputValue = (name) => {
+    const input = inputs.find((item) => item.name === name);
+    if (!input) return null;
+    const value = input.dataset.original ?? '';
+    return value === '' ? null : value;
+  };
 
   if (!hasMainUpdates && !shouldUpdateActividad) {
     updateDetailStatus('No hay cambios para guardar.', false);
@@ -2353,6 +2363,23 @@ async function saveDetailChanges() {
       }
     }
 
+    let historyWarning = false;
+    if (shouldLogHistory) {
+      const historyPayload = {
+        change_date: lastChange,
+        change_user: currentUser?.name ?? null,
+        original_id: originalId,
+        original_codigo_serie: getOriginalInputValue('codigo_serie'),
+        original_titulo_serie: getOriginalInputValue('titulo_serie'),
+        original_categoria: getOriginalInputValue('categoria'),
+        original_posicion: getOriginalInputValue('posicion'),
+      };
+      const { error } = await supabaseClient.from('carga_historic').insert([historyPayload]);
+      if (error) {
+        historyWarning = true;
+      }
+    }
+
     inputs.forEach((input) => {
       if (input.name === 'last_change') {
         input.value = lastChange;
@@ -2360,7 +2387,11 @@ async function saveDetailChanges() {
       input.dataset.original = input.value;
     });
 
-    updateDetailStatus('Cambios guardados en Supabase.', false);
+    if (historyWarning) {
+      updateDetailStatus('Cambios guardados, pero no se pudo registrar el histórico.', true);
+    } else {
+      updateDetailStatus('Cambios guardados en Supabase.', false);
+    }
     if (activeTable) {
       await loadRows(activeTable, activeModelFilter, activeLanguageFilter);
     }
