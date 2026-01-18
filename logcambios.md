@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.28.0
+
+- Se añadió un botón para exportar en PDF la visualización del acordeón con el modelo e idioma activos.
+- La exportación de PDF y CSV ahora solo está disponible para usuarios con sesión iniciada.
+- Se actualizó la versión visible de la app.
+
 ## v0.27.0
 
 - La exportación CSV de `series_vinculacion` ahora solo incluye filas cuyo `cod` coincide con las series visibles del modelo seleccionado.
