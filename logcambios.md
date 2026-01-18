@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.33.1
+
+- El buscador vuelve a incluir los elementos jerárquicamente superiores hasta la raíz.
+- Se actualizó la versión visible de la app.
+
 ## v0.33.0
 
 - El buscador ahora solo muestra los elementos que coinciden, sin incluir niveles superiores.

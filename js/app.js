@@ -1253,7 +1253,43 @@ function filterRowsWithHierarchy(rows, searchFilters) {
     categoria: normalizeFilterValue(searchFilters.categoria),
   };
 
-  return (rows || []).filter((row) => rowMatchesSearchFilters(row, normalizedFilters));
+  const nodes = (rows || []).map((row, index) => ({
+    identity: getRowIdentity(row, `row-${index + 1}`),
+    row,
+    parent: null,
+    children: [],
+  }));
+
+  const identityMap = new Map();
+  nodes.forEach((node) => {
+    if (!identityMap.has(node.identity)) {
+      identityMap.set(node.identity, node);
+    }
+  });
+
+  nodes.forEach((node) => {
+    const parentIdentity = getParentIdentity(node.row);
+    const parentNode =
+      parentIdentity && identityMap.has(parentIdentity) ? identityMap.get(parentIdentity) : null;
+    if (parentNode && parentNode !== node) {
+      node.parent = parentNode;
+      parentNode.children.push(node);
+    }
+  });
+
+  const includedIdentities = new Set();
+  nodes.forEach((node) => {
+    if (!rowMatchesSearchFilters(node.row, normalizedFilters)) return;
+    let current = node;
+    while (current) {
+      includedIdentities.add(current.identity);
+      current = current.parent;
+    }
+  });
+
+  return (rows || []).filter((row, index) =>
+    includedIdentities.has(getRowIdentity(row, `row-${index + 1}`)),
+  );
 }
 
 function getToneForCategoria(categoria, depth) {
