@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.21.0
+
+- Se compactó el estado de conexión en una caja superior izquierda, mostrando solo “Conectado OK” y la versión.
+- Se añadió el campo `admin` (booleano) en la tabla `users` de Supabase para control de permisos.
+- Se restringió la edición y creación de elementos/actividades únicamente a usuarios con `admin` en `true`.
+- Se actualizó la versión visible de la app.
+
 ## v0.20.0
 
 - Se agregó un botón de login en la esquina superior derecha con indicador de sesión activa.

@@ -5,8 +5,6 @@ import { listEntities } from './modules/cdcRegistry.js';
 const statusEl = document.getElementById('status');
 const statusIconEl = document.getElementById('status-icon');
 const statusTextEl = document.getElementById('status-text');
-const statusBadgeEl = document.getElementById('status-badge');
-const statusDetailEl = document.getElementById('status-detail');
 const loginUserEl = document.getElementById('login-user');
 const loginButton = document.getElementById('login-button');
 const logoutButton = document.getElementById('logout-button');
@@ -18,7 +16,6 @@ const loginPassEl = document.getElementById('login-pass');
 const loginSubmitEl = document.getElementById('login-submit');
 const registerSubmitEl = document.getElementById('register-submit');
 const loginStatusEl = document.getElementById('login-status');
-const pingButton = document.getElementById('ping-button');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
 const resultsEl = document.getElementById('results');
@@ -64,6 +61,7 @@ const activitiesMessageEl = document.getElementById('activities-message');
 const activityCreateFormEl = document.getElementById('activity-create-form');
 const activityCreateCodigoActividadEl = document.getElementById('activity-create-codigo-actividad');
 const activityCreateNombreEl = document.getElementById('activity-create-nombre');
+const activityCreateSubmitButton = document.getElementById('activity-create-submit');
 const activityCreateStatusEl = document.getElementById('activity-create-status');
 const activitiesAccordionEl = document.getElementById('activities-accordion');
 const activitiesExpandAllButton = document.getElementById('activities-expand-all');
@@ -72,6 +70,7 @@ const activityEditModalEl = document.getElementById('activity-edit-modal');
 const activityEditCloseEl = document.getElementById('activity-edit-close');
 const activityEditFormEl = document.getElementById('activity-edit-form');
 const activityEditFieldsEl = document.getElementById('activity-edit-fields');
+const activityEditSubmitButton = document.getElementById('activity-edit-submit');
 const activityEditStatusEl = document.getElementById('activity-edit-status');
 
 const PLACEHOLDER_PATTERNS = [
@@ -136,12 +135,10 @@ function getActividadesTableForActive() {
   return entity?.actividades?.table ?? null;
 }
 
-function setStatus(state, text, detail, badge = 'ENV') {
+function setStatus(state, text) {
   statusEl.dataset.state = state;
   statusIconEl.textContent = state === 'ok' ? '✅' : state === 'error' ? '❌' : '⚠️';
   statusTextEl.textContent = text;
-  statusDetailEl.textContent = detail || '';
-  statusBadgeEl.textContent = badge;
 }
 
 function showMessage(message, isError = false) {
@@ -162,18 +159,23 @@ function updateLoginStatus(message, isError = false) {
 
 function setAuthUser(user) {
   currentUser = user;
-  if (!loginUserEl || !loginButton || !logoutButton) return;
-  if (user) {
-    loginUserEl.textContent = `Sesión: ${user.name}`;
-    loginButton.textContent = 'Cambiar';
-    logoutButton.hidden = false;
-    localStorage.setItem('authUser', JSON.stringify(user));
-  } else {
-    loginUserEl.textContent = 'Sesión: sin iniciar';
-    loginButton.textContent = 'Login';
-    logoutButton.hidden = true;
-    localStorage.removeItem('authUser');
+  if (loginUserEl && loginButton && logoutButton) {
+    if (user) {
+      loginUserEl.textContent = `Sesión: ${user.name}`;
+      loginButton.textContent = 'Cambiar';
+      logoutButton.hidden = false;
+      localStorage.setItem(
+        'authUser',
+        JSON.stringify({ id: user.id, name: user.name, admin: user.admin === true }),
+      );
+    } else {
+      loginUserEl.textContent = 'Sesión: sin iniciar';
+      loginButton.textContent = 'Login';
+      logoutButton.hidden = true;
+      localStorage.removeItem('authUser');
+    }
   }
+  applyAccessControl();
 }
 
 function loadStoredAuthUser() {
@@ -182,10 +184,73 @@ function loadStoredAuthUser() {
     if (!stored) return;
     const parsed = JSON.parse(stored);
     if (parsed?.name) {
-      setAuthUser({ id: parsed.id, name: parsed.name });
+      setAuthUser({ id: parsed.id, name: parsed.name, admin: parsed.admin === true });
     }
   } catch (error) {
     localStorage.removeItem('authUser');
+  }
+}
+
+function userCanEdit() {
+  return currentUser?.admin === true;
+}
+
+function applyAccessControl() {
+  const canEdit = userCanEdit();
+  if (openCreateModalButton) {
+    openCreateModalButton.disabled = !canEdit;
+  }
+  if (createSubmitButton) {
+    createSubmitButton.disabled = !canEdit;
+  }
+  if (createCodigoSerieEl) {
+    createCodigoSerieEl.disabled = !canEdit;
+  }
+  if (createTituloSerieEl) {
+    createTituloSerieEl.disabled = !canEdit;
+  }
+  if (createCategoriaEl) {
+    createCategoriaEl.disabled = !canEdit;
+  }
+  if (createPosicionEl) {
+    createPosicionEl.disabled = !canEdit;
+  }
+  if (createPosicionSearchEl) {
+    createPosicionSearchEl.disabled = !canEdit;
+  }
+  if (detailDrawerSaveEl) {
+    detailDrawerSaveEl.disabled = !canEdit;
+  }
+  if (detailDrawerBodyEl) {
+    detailDrawerBodyEl.querySelectorAll('input').forEach((input) => {
+      if (!input.hasAttribute('data-force-edit')) {
+        input.readOnly = !canEdit || input.name === 'last_change';
+      }
+    });
+  }
+  if (activityCreateCodigoActividadEl) {
+    activityCreateCodigoActividadEl.disabled = !canEdit;
+  }
+  if (activityCreateNombreEl) {
+    activityCreateNombreEl.disabled = !canEdit;
+  }
+  if (activityCreateSubmitButton) {
+    activityCreateSubmitButton.disabled = !canEdit;
+  }
+  if (activityEditSubmitButton) {
+    activityEditSubmitButton.disabled = !canEdit;
+  }
+  if (activitiesAccordionEl) {
+    activitiesAccordionEl.querySelectorAll('.activity-row-actions button').forEach((button) => {
+      button.disabled = !canEdit;
+      button.title = !canEdit ? 'Solo lectura' : '';
+    });
+  }
+  if (!canEdit) {
+    closeCreateModal();
+    if (activityEditModalEl && !activityEditModalEl.hidden) {
+      closeActivityEditModal();
+    }
   }
 }
 
@@ -228,7 +293,7 @@ async function handleLogin() {
   try {
     const { data, error } = await supabaseClient
       .from('users')
-      .select('id, name, pass')
+      .select('id, name, pass, admin')
       .eq('name', name)
       .limit(1)
       .maybeSingle();
@@ -242,7 +307,7 @@ async function handleLogin() {
       return;
     }
 
-    setAuthUser({ id: data.id, name: data.name });
+    setAuthUser({ id: data.id, name: data.name, admin: data.admin === true });
     updateLoginStatus('Sesión iniciada.', false);
     closeLoginModal();
   } catch (error) {
@@ -292,14 +357,14 @@ async function handleRegister() {
     const { data, error } = await supabaseClient
       .from('users')
       .insert(payload)
-      .select('id, name')
+      .select('id, name, admin')
       .single();
 
     if (error) {
       throw error;
     }
 
-    setAuthUser({ id: data.id, name: data.name });
+    setAuthUser({ id: data.id, name: data.name, admin: data.admin === true });
     updateLoginStatus('Registro completado.', false);
     closeLoginModal();
   } catch (error) {
@@ -379,21 +444,18 @@ async function pingSupabase() {
     return;
   }
 
-  pingButton.disabled = true;
   showMessage('Probando conexión...', false);
 
-  const { data, error } = await supabaseClient.rpc('ping');
+  const { error } = await supabaseClient.rpc('ping');
 
   if (error) {
     const friendly = mapSupabaseError(error);
-    setStatus('error', 'Error de conexión', friendly, 'PING');
+    setStatus('error', 'Error de conexión');
     showMessage(friendly, true);
   } else {
-    setStatus('ok', 'Conectado OK', `Respuesta: ${data || 'pong'}`, 'PING');
-    showMessage('RPC ping ejecutado correctamente.', false);
+    setStatus('ok', 'Conectado OK');
+    showMessage('', false);
   }
-
-  pingButton.disabled = false;
 }
 
 function mapSupabaseError(error) {
@@ -809,6 +871,10 @@ function refreshCreateOptions() {
 }
 
 function openCreateModal() {
+  if (!userCanEdit()) {
+    showMessage('Solo los administradores pueden crear elementos.', true);
+    return;
+  }
   if (!activeTable) {
     showMessage('Selecciona un cuadro del catálogo antes de crear un elemento.', true);
     return;
@@ -888,6 +954,10 @@ function closePositionModal() {
 
 async function handleCreateSubmit(event) {
   event.preventDefault();
+  if (!userCanEdit()) {
+    setCreateStatus('Solo los administradores pueden crear elementos.', true);
+    return;
+  }
   if (!supabaseClient) {
     setCreateStatus('Configura Supabase antes de crear.', true);
     return;
@@ -1025,8 +1095,12 @@ async function openModelModal(table, label) {
 async function openDetailDrawer(row, title) {
   detailDrawerTitleEl.textContent = title || 'Detalles del registro';
   detailDrawerBodyEl.innerHTML = '';
-  updateDetailStatus('Edita los campos y guarda los cambios para confirmar.', false);
-  detailDrawerSaveEl.disabled = false;
+  if (userCanEdit()) {
+    updateDetailStatus('Edita los campos y guarda los cambios para confirmar.', false);
+  } else {
+    updateDetailStatus('Solo lectura: no tienes permisos de edición.', false);
+  }
+  detailDrawerSaveEl.disabled = !userCanEdit();
 
   const codigoSerie = row?.codigo_serie ?? row?.cod ?? '';
   detailDrawerEl.dataset.codigoSerie = codigoSerie;
@@ -1065,7 +1139,7 @@ async function openDetailDrawer(row, title) {
     input.name = key;
     input.value = value === null || value === undefined ? '' : String(value);
     input.placeholder = '—';
-    if (readOnly) {
+    if (readOnly || !userCanEdit()) {
       input.readOnly = true;
     }
     input.dataset.original = input.value;
@@ -1232,6 +1306,10 @@ function renderActividadesAccordion() {
     editButton.type = 'button';
     editButton.className = 'secondary';
     editButton.textContent = 'Editar';
+    editButton.disabled = !userCanEdit();
+    if (!userCanEdit()) {
+      editButton.title = 'Solo lectura';
+    }
     editButton.addEventListener('click', (event) => {
       event.stopPropagation();
       openActivityEditModal(details);
@@ -1348,6 +1426,10 @@ function updateActividadesRowsData(context, updates) {
 }
 
 function openActivityEditModal(rowEl) {
+  if (!userCanEdit()) {
+    showActivitiesMessage('Solo los administradores pueden editar actividades.', true);
+    return;
+  }
   if (!activityEditModalEl || !activityEditFieldsEl) return;
   const context = {
     identityField: rowEl.dataset.identityField,
@@ -1394,6 +1476,10 @@ function closeActivityEditModal() {
 
 async function handleActivityEditSubmit(event) {
   event.preventDefault();
+  if (!userCanEdit()) {
+    updateActivityEditStatus('Solo los administradores pueden guardar cambios.', true);
+    return;
+  }
   if (!activityEditContext) return;
   const inputs = Array.from(activityEditFieldsEl.querySelectorAll('input[name]'));
   const updates = {};
@@ -1567,6 +1653,10 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
 
 async function handleActivityCreateSubmit(event) {
   event.preventDefault();
+  if (!userCanEdit()) {
+    updateActivityCreateStatus('Solo los administradores pueden crear actividades.', true);
+    return;
+  }
   if (!supabaseClient) {
     updateActivityCreateStatus('Configura Supabase antes de guardar.', true);
     return;
@@ -1613,6 +1703,10 @@ async function openActivitiesView(table, label) {
 }
 
 async function saveDetailChanges() {
+  if (!userCanEdit()) {
+    updateDetailStatus('Solo los administradores pueden guardar cambios.', true);
+    return;
+  }
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de guardar cambios.', true);
     return;
@@ -1720,11 +1814,12 @@ function init() {
 
   updateResultsTitle(null, 0);
   loadStoredAuthUser();
+  applyAccessControl();
 
   if (!env) {
     vercelWarningEl.hidden = false;
-    setStatus('warning', 'Sin /api/env.js', 'No se encontró configuración de entorno.', 'ENV');
-    pingButton.disabled = true;
+    setStatus('warning', 'Sin /api/env.js');
+    showMessage('No se encontró configuración de entorno.', true);
     renderCatalog([]);
     return;
   }
@@ -1741,15 +1836,17 @@ function init() {
   const validation = validateConfig(env);
   if (!validation.valid) {
     vercelWarningEl.hidden = false;
-    setStatus('warning', 'Configuración incompleta', validation.reason, 'ENV');
-    pingButton.disabled = true;
+    setStatus('warning', 'Configuración incompleta');
+    showMessage(validation.reason, true);
     return;
   }
 
   if (validation.warning) {
-    setStatus('warning', 'Configura Supabase', validation.warning, 'ENV');
+    setStatus('warning', 'Configura Supabase');
+    showMessage(validation.warning, true);
   } else {
-    setStatus('ok', 'Configuración lista', 'Variables cargadas correctamente.', 'ENV');
+    setStatus('ok', 'Configuración lista');
+    showMessage('', false);
   }
 
   supabaseClient = createSupabaseClient({
@@ -1757,11 +1854,8 @@ function init() {
     supabaseAnonKey: env.SUPABASE_ANON_KEY,
   });
 
-  pingButton.disabled = false;
   pingSupabase();
 }
-
-pingButton.addEventListener('click', pingSupabase);
 if (loginButton) {
   loginButton.addEventListener('click', openLoginModal);
 }
