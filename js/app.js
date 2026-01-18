@@ -658,6 +658,29 @@ async function fetchRowsForExport(table, modelFilter, languageFilter) {
   return { data: null, error };
 }
 
+async function fetchVinculacionRowsForExport(table, codigoSeries) {
+  if (!codigoSeries.length) return { data: [], error: null };
+  const { data, error } = await supabaseClient
+    .from(table)
+    .select('*')
+    .in('cod', codigoSeries);
+  if (!error) return { data, error: null };
+  return { data: null, error };
+}
+
+function collectCodigoSerieValues(rows) {
+  const codes = new Set();
+  (rows || []).forEach((row) => {
+    const rawValue = row?.codigo_serie ?? row?.cod ?? row?.nombre_serie;
+    if (rawValue === null || rawValue === undefined) return;
+    const raw = String(rawValue);
+    const trimmed = raw.trim();
+    if (trimmed) codes.add(trimmed);
+    if (raw && raw !== trimmed) codes.add(raw);
+  });
+  return Array.from(codes);
+}
+
 async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de exportar.', true);
@@ -695,10 +718,12 @@ async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
     return;
   }
 
-  const { data: vinculacionRows, error: vinculacionError } = await fetchRowsForExport(
+  const searchFilters = getSearchFilters();
+  const visibleCargaRows = filterRowsWithHierarchy(cargaRows || [], searchFilters);
+  const codigoSeries = collectCodigoSerieValues(visibleCargaRows);
+  const { data: vinculacionRows, error: vinculacionError } = await fetchVinculacionRowsForExport(
     vinculacionTable,
-    activeModelFilter,
-    activeLanguageFilter,
+    codigoSeries,
   );
   if (vinculacionError) {
     showMessage(mapSupabaseError(vinculacionError), true);
