@@ -25,6 +25,12 @@ const modelModalTitleEl = document.getElementById('model-modal-title');
 const modelModalMessageEl = document.getElementById('model-modal-message');
 const modelModalCloseEl = document.getElementById('model-modal-close');
 const modelListEl = document.getElementById('model-list');
+const languageSwitcherEl = document.getElementById('language-switcher');
+const languageModalEl = document.getElementById('language-modal');
+const languageModalTitleEl = document.getElementById('language-modal-title');
+const languageModalMessageEl = document.getElementById('language-modal-message');
+const languageModalCloseEl = document.getElementById('language-modal-close');
+const languageListEl = document.getElementById('language-list');
 const filterFormEl = document.getElementById('filter-form');
 const filterCodigoSerieEl = document.getElementById('filter-codigo-serie');
 const filterTituloSerieEl = document.getElementById('filter-titulo-serie');
@@ -88,6 +94,9 @@ let activeCatalog = null;
 let pendingModelTable = null;
 let activeTable = null;
 let activeModelFilter = null;
+let activeLanguageFilter = null;
+let availableLanguages = [];
+let pendingLanguageContext = null;
 let activeRows = [];
 let actividadesRows = [];
 let activityEditContext = null;
@@ -528,7 +537,7 @@ function rowMatchesSearchFilters(row, normalizedFilters) {
   );
 }
 
-async function fetchAllRows(table, modelFilter) {
+async function fetchAllRows(table, modelFilter, languageFilter) {
   const batchSize = 1000;
   let from = 0;
   let allRows = [];
@@ -542,6 +551,9 @@ async function fetchAllRows(table, modelFilter) {
       } else {
         query = query.eq('modelo', modelFilter.value);
       }
+    }
+    if (languageFilter?.value !== null && languageFilter?.value !== undefined) {
+      query = query.eq('idioma', languageFilter.value);
     }
 
     const { data, error } = await query;
@@ -558,6 +570,133 @@ async function fetchAllRows(table, modelFilter) {
   }
 
   return { data: allRows, error: null };
+}
+
+function normalizeLanguageValue(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function isMissingColumnError(error, columnName) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes(`column "${columnName}"`) || message.includes(`column '${columnName}'`);
+}
+
+function renderLanguageSwitcher(options, activeOption) {
+  if (!languageSwitcherEl) return;
+  languageSwitcherEl.innerHTML = '';
+  if (!options || options.length === 0) {
+    languageSwitcherEl.hidden = true;
+    return;
+  }
+  languageSwitcherEl.hidden = false;
+  const label = document.createElement('span');
+  label.className = 'language-label';
+  label.textContent = 'Idioma:';
+  languageSwitcherEl.appendChild(label);
+  options.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary language-button';
+    button.textContent = option.label;
+    if (activeOption?.value === option.value) {
+      button.classList.add('active');
+      button.disabled = true;
+    }
+    button.addEventListener('click', async () => {
+      if (!activeTable || !activeModelFilter) return;
+      await loadRows(activeTable, activeModelFilter, option);
+    });
+    languageSwitcherEl.appendChild(button);
+  });
+}
+
+function setLanguageOptions(options, activeOption) {
+  availableLanguages = options || [];
+  activeLanguageFilter = activeOption || null;
+  renderLanguageSwitcher(availableLanguages, activeLanguageFilter);
+}
+
+async function fetchLanguageOptions(table, modelFilter) {
+  const batchSize = 1000;
+  let from = 0;
+  let allRows = [];
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabaseClient.from(table).select('idioma').range(from, from + batchSize - 1);
+    if (modelFilter) {
+      if (modelFilter.isNull) {
+        query = query.is('modelo', null);
+      } else {
+        query = query.eq('modelo', modelFilter.value);
+      }
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      if (isMissingColumnError(error, 'idioma')) {
+        return { options: [], error: null };
+      }
+      return { options: [], error };
+    }
+    const batch = data || [];
+    allRows = allRows.concat(batch);
+    if (batch.length < batchSize) {
+      hasMore = false;
+    } else {
+      from += batchSize;
+    }
+  }
+
+  const unique = new Map();
+  allRows.forEach((row) => {
+    const raw = normalizeLanguageValue(row?.idioma);
+    if (!raw) return;
+    if (!unique.has(raw)) {
+      unique.set(raw, { label: raw, value: row?.idioma });
+    }
+  });
+
+  const options = Array.from(unique.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }),
+  );
+  return { options, error: null };
+}
+
+function closeLanguageModal() {
+  if (!languageModalEl) return;
+  languageModalEl.hidden = true;
+  pendingLanguageContext = null;
+  if (languageModalMessageEl) {
+    languageModalMessageEl.textContent = '';
+  }
+  if (languageListEl) {
+    languageListEl.innerHTML = '';
+  }
+}
+
+function openLanguageModal(table, modelFilter, options) {
+  if (!languageModalEl || !languageListEl) return;
+  pendingLanguageContext = { table, modelFilter, options };
+  languageModalTitleEl.textContent = `Selecciona un idioma (${modelFilter?.label || 'modelo'})`;
+  languageModalMessageEl.textContent = 'Este modelo tiene versiones por idioma.';
+  languageListEl.innerHTML = '';
+  options.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary';
+    button.textContent = option.label;
+    button.addEventListener('click', async () => {
+      const context = pendingLanguageContext;
+      closeLanguageModal();
+      if (!context?.table) return;
+      setLanguageOptions(context.options, option);
+      await loadRows(context.table, context.modelFilter, option);
+    });
+    languageListEl.appendChild(button);
+  });
+  languageModalEl.hidden = false;
 }
 
 function renderCatalog(entities) {
@@ -606,7 +745,7 @@ function renderCatalog(entities) {
   });
 }
 
-async function loadRows(table, modelFilter = null) {
+async function loadRows(table, modelFilter = null, languageFilter = activeLanguageFilter) {
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de consultar tablas.', true);
     return;
@@ -617,18 +756,23 @@ async function loadRows(table, modelFilter = null) {
     : modelFilter?.isNull
       ? ' · Modelo: (sin modelo)'
       : '';
+  const resolvedLanguageFilter = languageFilter ?? null;
+  const languageLabel = resolvedLanguageFilter?.label
+    ? ` · Idioma: ${resolvedLanguageFilter.label}`
+    : '';
   const searchFilters = getSearchFilters();
   const filterParts = [];
   if (searchFilters.codigoSerie) filterParts.push(`codigo_serie contiene "${searchFilters.codigoSerie}"`);
   if (searchFilters.tituloSerie) filterParts.push(`titulo_serie contiene "${searchFilters.tituloSerie}"`);
   if (searchFilters.categoria) filterParts.push(`categoria contiene "${searchFilters.categoria}"`);
   const searchLabel = filterParts.length ? ` · Filtros: ${filterParts.join(' · ')}` : '';
-  showMessage(`Consultando ${table}${filterLabel}${searchLabel}...`, false);
+  showMessage(`Consultando ${table}${filterLabel}${languageLabel}${searchLabel}...`, false);
 
   activeTable = table;
   activeModelFilter = modelFilter;
+  activeLanguageFilter = resolvedLanguageFilter;
 
-  const { data, error } = await fetchAllRows(table, modelFilter);
+  const { data, error } = await fetchAllRows(table, modelFilter, resolvedLanguageFilter);
 
   if (error) {
     const friendly = mapSupabaseError(error);
@@ -642,7 +786,8 @@ async function loadRows(table, modelFilter = null) {
   refreshCreateOptions();
   const filteredRows = filterRowsWithHierarchy(allRows, searchFilters);
   renderResults(filteredRows);
-  updateResultsTitle(modelFilter, filteredRows.length);
+  updateResultsTitle(modelFilter, filteredRows.length, resolvedLanguageFilter);
+  renderLanguageSwitcher(availableLanguages, resolvedLanguageFilter);
   showMessage('', false);
 }
 
@@ -829,14 +974,15 @@ function renderResults(rows) {
   resultsEl.appendChild(list);
 }
 
-function updateResultsTitle(modelFilter, count) {
+function updateResultsTitle(modelFilter, count, languageFilter = null) {
   if (!resultsTitleEl) return;
   const modelLabel = modelFilter
     ? modelFilter.isNull
       ? '(sin modelo)'
       : modelFilter.label || modelFilter.value
     : 'Todos';
-  resultsTitleEl.textContent = `Modelo: ${modelLabel} · Elementos cargados: ${count}`;
+  const languageLabel = languageFilter?.label ? ` · Idioma: ${languageFilter.label}` : '';
+  resultsTitleEl.textContent = `Modelo: ${modelLabel}${languageLabel} · Elementos cargados: ${count}`;
 }
 
 function setCreateStatus(message, isError = false) {
@@ -1010,7 +1156,7 @@ async function handleCreateSubmit(event) {
   createSubmitButton.disabled = false;
   closeCreateModal();
   if (activeTable) {
-    await loadRows(activeTable, activeModelFilter);
+    await loadRows(activeTable, activeModelFilter, activeLanguageFilter);
   }
 }
 
@@ -1019,6 +1165,24 @@ function closeModelModal() {
   pendingModelTable = null;
   modelModalMessageEl.textContent = '';
   modelListEl.innerHTML = '';
+}
+
+async function handleModelSelection(table, modelOption) {
+  if (!supabaseClient) {
+    showMessage('Configura Supabase antes de consultar tablas.', true);
+    return;
+  }
+  setLanguageOptions([], null);
+  const { options, error } = await fetchLanguageOptions(table, modelOption);
+  if (error) {
+    showMessage(mapSupabaseError(error), true);
+    return;
+  }
+  if (options.length > 0) {
+    openLanguageModal(table, modelOption, options);
+    return;
+  }
+  await loadRows(table, modelOption, null);
 }
 
 async function openModelModal(table, label) {
@@ -1092,7 +1256,7 @@ async function openModelModal(table, label) {
       const selectedTable = pendingModelTable;
       closeModelModal();
       if (selectedTable) {
-        await loadRows(selectedTable, option);
+        await handleModelSelection(selectedTable, option);
       }
     });
     modelListEl.appendChild(button);
@@ -1816,7 +1980,7 @@ async function saveDetailChanges() {
 
     updateDetailStatus('Cambios guardados en Supabase.', false);
     if (activeTable) {
-      await loadRows(activeTable, activeModelFilter);
+      await loadRows(activeTable, activeModelFilter, activeLanguageFilter);
     }
   } catch (error) {
     updateDetailStatus(mapSupabaseError(error), true);
@@ -1896,6 +2060,9 @@ if (registerSubmitEl) {
   registerSubmitEl.addEventListener('click', handleRegister);
 }
 modelModalCloseEl.addEventListener('click', closeModelModal);
+if (languageModalCloseEl) {
+  languageModalCloseEl.addEventListener('click', closeLanguageModal);
+}
 openCreateModalButton.addEventListener('click', openCreateModal);
 createModalCloseEl.addEventListener('click', closeCreateModal);
 createPosicionSearchEl.addEventListener('click', openPositionModal);
@@ -1951,6 +2118,13 @@ if (loginModalEl) {
     }
   });
 }
+if (languageModalEl) {
+  languageModalEl.addEventListener('click', (event) => {
+    if (event.target === languageModalEl) {
+      closeLanguageModal();
+    }
+  });
+}
 modelModalEl.addEventListener('click', (event) => {
   if (event.target === modelModalEl) {
     closeModelModal();
@@ -1986,6 +2160,9 @@ window.addEventListener('keydown', (event) => {
     if (loginModalEl && !loginModalEl.hidden) {
       closeLoginModal();
     }
+    if (languageModalEl && !languageModalEl.hidden) {
+      closeLanguageModal();
+    }
   }
 });
 
@@ -1995,7 +2172,7 @@ filterFormEl.addEventListener('submit', async (event) => {
     showMessage('Selecciona un cuadro del catálogo antes de aplicar filtros.', true);
     return;
   }
-  await loadRows(activeTable, activeModelFilter);
+  await loadRows(activeTable, activeModelFilter, activeLanguageFilter);
 });
 
 clearFiltersButton.addEventListener('click', async () => {
@@ -2003,7 +2180,7 @@ clearFiltersButton.addEventListener('click', async () => {
   filterTituloSerieEl.value = '';
   filterCategoriaEl.value = '';
   if (activeTable) {
-    await loadRows(activeTable, activeModelFilter);
+    await loadRows(activeTable, activeModelFilter, activeLanguageFilter);
   } else {
     showMessage('Filtros limpiados. Selecciona un cuadro para ver resultados.', false);
   }

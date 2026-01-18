@@ -289,6 +289,32 @@
         margin-bottom: 8px;
       }
 
+      .results-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .language-switcher {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .language-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+      }
+
+      .language-button.active {
+        background: #1f2937;
+        border-color: #1f2937;
+        color: #ffffff;
+      }
+
       .results-list {
         display: grid;
         gap: 6px;
@@ -775,7 +801,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.23.0</p>
+            <p class="version-text"><strong>Versión:</strong> v0.24.0</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -805,7 +831,10 @@
         <section class="card">
           <div class="results-header">
             <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
-            <button id="open-create-modal" type="button">Crear elemento</button>
+            <div class="results-actions">
+              <div id="language-switcher" class="language-switcher" hidden></div>
+              <button id="open-create-modal" type="button">Crear elemento</button>
+            </div>
           </div>
           <form id="filter-form" class="filters">
             <label>
@@ -911,6 +940,22 @@
         </div>
         <p id="model-modal-message" class="muted"></p>
         <div id="model-list" class="modal-grid"></div>
+      </div>
+    </div>
+
+    <div id="language-modal" class="modal" hidden>
+      <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="language-modal-title"
+      >
+        <div class="modal-header">
+          <h3 id="language-modal-title">Selecciona un idioma</h3>
+          <button id="language-modal-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <p id="language-modal-message" class="muted"></p>
+        <div id="language-list" class="modal-grid"></div>
       </div>
     </div>
 
