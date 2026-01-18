@@ -39,6 +39,7 @@ const clearFiltersButton = document.getElementById('clear-filters');
 const expandAllButton = document.getElementById('expand-all');
 const collapseAllButton = document.getElementById('collapse-all');
 const resultsTitleEl = document.getElementById('results-title');
+const exportPdfButton = document.getElementById('export-pdf');
 const openCreateModalButton = document.getElementById('open-create-modal');
 const createModalEl = document.getElementById('create-modal');
 const createModalCloseEl = document.getElementById('create-modal-close');
@@ -237,8 +238,13 @@ function userCanEdit() {
   return currentUser?.admin === true;
 }
 
+function userIsLoggedIn() {
+  return Boolean(currentUser?.name);
+}
+
 function applyAccessControl() {
   const canEdit = userCanEdit();
+  const isLoggedIn = userIsLoggedIn();
   if (openCreateModalButton) {
     openCreateModalButton.disabled = !canEdit;
   }
@@ -288,6 +294,14 @@ function applyAccessControl() {
       button.title = !canEdit ? 'Solo lectura' : '';
     });
   }
+  document.querySelectorAll('[data-auth-required="true"]').forEach((button) => {
+    button.disabled = !isLoggedIn;
+    if (!isLoggedIn) {
+      button.title = 'Inicia sesión para exportar.';
+    } else {
+      button.removeAttribute('title');
+    }
+  });
   if (!canEdit) {
     closeCreateModal();
     if (activityEditModalEl && !activityEditModalEl.hidden) {
@@ -682,6 +696,10 @@ function collectCodigoSerieValues(rows) {
 }
 
 async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
+  if (!userIsLoggedIn()) {
+    showMessage('Inicia sesión para exportar CSV.', true);
+    return;
+  }
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de exportar.', true);
     return;
@@ -896,6 +914,7 @@ function renderCatalog(entities) {
         data-export-carga-table="${entity.carga.table}"
         data-export-vinculacion-table="${entity.vinculacion?.table || ''}"
         data-label="${entity.label}"
+        data-auth-required="true"
       >
         Exportar CSV RPA
       </button>
@@ -930,6 +949,122 @@ function renderCatalog(entities) {
       await exportCsvForModel({ cargaTable, vinculacionTable, label });
     });
   });
+
+  applyAccessControl();
+}
+
+function buildPdfHeader() {
+  const modelLabel = activeModelFilter
+    ? activeModelFilter.isNull
+      ? '(sin modelo)'
+      : activeModelFilter.label || activeModelFilter.value
+    : 'Todos';
+  const languageLabel = activeLanguageFilter?.label ? ` · Idioma: ${activeLanguageFilter.label}` : '';
+  const searchFilters = getSearchFilters();
+  const filterParts = [];
+  if (searchFilters.codigoSerie) filterParts.push(`codigo_serie contiene "${searchFilters.codigoSerie}"`);
+  if (searchFilters.tituloSerie) filterParts.push(`titulo_serie contiene "${searchFilters.tituloSerie}"`);
+  if (searchFilters.categoria) filterParts.push(`categoria contiene "${searchFilters.categoria}"`);
+  const filterLabel = filterParts.length ? `Filtros: ${filterParts.join(' · ')}` : 'Sin filtros';
+  return {
+    title: `Modelo: ${modelLabel}${languageLabel}`,
+    filters: filterLabel,
+    generatedAt: new Date().toLocaleString('es-ES'),
+  };
+}
+
+function buildPrintableResults(rows) {
+  const roots = buildHierarchy(rows);
+  if (roots.length === 0) return null;
+
+  const list = document.createElement('div');
+  list.className = 'results-list';
+  roots.forEach((node, index) => {
+    const hierarchyLabel = `${index + 1}`;
+    list.appendChild(createHierarchyDetails(node, 0, hierarchyLabel));
+  });
+  list.querySelectorAll('details').forEach((detail) => {
+    detail.open = true;
+  });
+  list.querySelectorAll('.detail-button').forEach((button) => button.remove());
+  list.querySelectorAll('.toggle-icon').forEach((icon) => icon.remove());
+  return list;
+}
+
+function exportPdfForModel() {
+  if (!userIsLoggedIn()) {
+    showMessage('Inicia sesión para exportar PDF.', true);
+    return;
+  }
+  if (!activeTable || !activeModelFilter) {
+    showMessage('Selecciona un modelo antes de exportar el PDF.', true);
+    return;
+  }
+  const searchFilters = getSearchFilters();
+  const visibleRows = filterRowsWithHierarchy(activeRows || [], searchFilters);
+  if (!visibleRows.length) {
+    showMessage('No hay resultados para exportar.', true);
+    return;
+  }
+
+  const printable = buildPrintableResults(visibleRows);
+  if (!printable) {
+    showMessage('No hay filas raíz para exportar.', true);
+    return;
+  }
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    showMessage('El navegador bloqueó la ventana de impresión.', true);
+    return;
+  }
+
+  const header = buildPdfHeader();
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>Exportar PDF</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            margin: 24px;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #1f2933;
+          }
+          h1 { font-size: 20px; margin: 0 0 8px 0; }
+          p { margin: 4px 0; font-size: 12px; color: #52606d; }
+          .results-list { margin-top: 16px; }
+          details { border: 1px solid #e4e7eb; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
+          summary { list-style: none; cursor: default; }
+          summary::-webkit-details-marker { display: none; }
+          .result-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+          .result-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+          .hierarchy-badge { font-weight: 600; color: #334e68; }
+          .codigo-serie-badge { font-weight: 600; color: #1f2933; }
+          .titulo-serie { font-weight: 500; }
+          .categoria-serie { font-style: italic; color: #52606d; }
+          .result-separator { color: #9fb3c8; }
+          .child-list { margin-left: 24px; margin-top: 8px; display: grid; gap: 6px; }
+        </style>
+      </head>
+      <body>
+        <h1>${header.title}</h1>
+        <p>${header.filters}</p>
+        <p>Generado: ${header.generatedAt}</p>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.document.body.appendChild(printable);
+
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 250);
 }
 
 async function loadRows(table, modelFilter = null, languageFilter = activeLanguageFilter) {
@@ -2311,6 +2446,9 @@ if (languageModalCloseEl) {
   languageModalCloseEl.addEventListener('click', closeLanguageModal);
 }
 openCreateModalButton.addEventListener('click', openCreateModal);
+if (exportPdfButton) {
+  exportPdfButton.addEventListener('click', exportPdfForModel);
+}
 createModalCloseEl.addEventListener('click', closeCreateModal);
 createPosicionSearchEl.addEventListener('click', openPositionModal);
 positionModalCloseEl.addEventListener('click', closePositionModal);
