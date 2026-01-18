@@ -59,8 +59,13 @@ const detailDrawerEl = document.getElementById('detail-drawer');
 const detailDrawerTitleEl = document.getElementById('detail-drawer-title');
 const detailDrawerBodyEl = document.getElementById('detail-drawer-body');
 const detailDrawerCloseEl = document.getElementById('detail-drawer-close');
+const detailDrawerHistoryEl = document.getElementById('detail-drawer-history');
 const detailDrawerSaveEl = document.getElementById('detail-drawer-save');
 const detailDrawerStatusEl = document.getElementById('detail-drawer-status');
+const historyModalEl = document.getElementById('history-modal');
+const historyModalCloseEl = document.getElementById('history-modal-close');
+const historyStatusEl = document.getElementById('history-status');
+const historyListEl = document.getElementById('history-list');
 const cuadrosViewEl = document.getElementById('cuadros-view');
 const activitiesViewEl = document.getElementById('activities-view');
 const backToCuadrosButton = document.getElementById('back-to-cuadros');
@@ -268,6 +273,10 @@ function applyAccessControl() {
   }
   if (detailDrawerSaveEl) {
     detailDrawerSaveEl.disabled = !canEdit;
+  }
+  if (detailDrawerHistoryEl) {
+    detailDrawerHistoryEl.disabled = !canEdit;
+    detailDrawerHistoryEl.hidden = !canEdit;
   }
   if (detailDrawerBodyEl) {
     detailDrawerBodyEl.querySelectorAll('input').forEach((input) => {
@@ -543,6 +552,43 @@ function updateDetailStatus(message, isError = false) {
   if (!detailDrawerStatusEl) return;
   detailDrawerStatusEl.textContent = message || '';
   detailDrawerStatusEl.className = isError ? 'error' : 'muted';
+}
+
+function updateHistoryStatus(message, isError = false) {
+  if (!historyStatusEl) return;
+  historyStatusEl.textContent = message || '';
+  historyStatusEl.className = isError ? 'error' : 'muted';
+}
+
+function readDetailInputValue(inputs, name, useOriginal = false) {
+  const input = inputs.find((item) => item.name === name);
+  if (!input) return null;
+  const rawValue = useOriginal ? input.dataset.original ?? '' : input.value;
+  if (useOriginal) {
+    return rawValue === '' ? null : rawValue;
+  }
+  return normalizeInputValue(rawValue);
+}
+
+function buildHistoryPayload(inputs, originalId, lastChange, useOriginal = false) {
+  return {
+    change_date: lastChange,
+    change_user: currentUser?.name ?? null,
+    original_id: originalId ?? null,
+    original_codigo_serie: readDetailInputValue(inputs, 'codigo_serie', useOriginal),
+    original_titulo_serie: readDetailInputValue(inputs, 'titulo_serie', useOriginal),
+    original_categoria: readDetailInputValue(inputs, 'categoria', useOriginal),
+    original_posicion: readDetailInputValue(inputs, 'posicion', useOriginal),
+  };
+}
+
+function formatHistoryDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  return date.toLocaleString('es-ES');
 }
 
 function getSearchFilters() {
@@ -1654,6 +1700,11 @@ async function openDetailDrawer(row, title) {
     updateDetailStatus('Solo lectura: no tienes permisos de edición.', false);
   }
   detailDrawerSaveEl.disabled = !userCanEdit();
+  if (detailDrawerHistoryEl) {
+    const canShowHistory = userCanEdit() && activeTable === 'series_carga';
+    detailDrawerHistoryEl.hidden = !canShowHistory;
+    detailDrawerHistoryEl.disabled = !canShowHistory;
+  }
 
   const codigoSerie = row?.codigo_serie ?? row?.cod ?? '';
   detailDrawerEl.dataset.codigoSerie = codigoSerie;
@@ -1707,6 +1758,196 @@ async function openDetailDrawer(row, title) {
 
 function closeDetailDrawer() {
   detailDrawerEl.hidden = true;
+  closeHistoryModal();
+}
+
+function openHistoryModal() {
+  if (!historyModalEl) return;
+  if (!userCanEdit()) {
+    updateDetailStatus('Solo los administradores pueden ver el histórico.', true);
+    return;
+  }
+  if (activeTable !== 'series_carga') {
+    updateDetailStatus('El histórico solo está disponible para series de carga.', true);
+    return;
+  }
+  historyModalEl.hidden = false;
+  loadHistoryForCurrentDetail();
+}
+
+function closeHistoryModal() {
+  if (!historyModalEl) return;
+  historyModalEl.hidden = true;
+}
+
+function renderHistoryList(rows) {
+  if (!historyListEl) return;
+  historyListEl.innerHTML = '';
+  if (!rows.length) {
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = 'No hay cambios registrados para esta serie.';
+    historyListEl.appendChild(empty);
+    return;
+  }
+
+  rows.forEach((row) => {
+    const entry = document.createElement('div');
+    entry.className = 'history-entry';
+
+    const meta = document.createElement('div');
+    meta.className = 'history-meta';
+    const dateEl = document.createElement('span');
+    dateEl.textContent = `Fecha: ${formatHistoryDate(row.change_date)}`;
+    const userEl = document.createElement('span');
+    userEl.textContent = `Usuario: ${row.change_user || '—'}`;
+    meta.appendChild(dateEl);
+    meta.appendChild(userEl);
+
+    const fields = document.createElement('div');
+    fields.className = 'history-fields';
+    [
+      { key: 'original_codigo_serie', label: 'Código serie' },
+      { key: 'original_titulo_serie', label: 'Título serie' },
+      { key: 'original_categoria', label: 'Categoría' },
+      { key: 'original_posicion', label: 'Posición' },
+    ].forEach(({ key, label }) => {
+      const field = document.createElement('div');
+      field.className = 'history-field';
+      const title = document.createElement('span');
+      title.textContent = label;
+      const value = document.createElement('div');
+      const rawValue = row?.[key];
+      value.textContent = rawValue === null || rawValue === undefined || rawValue === '' ? '—' : rawValue;
+      field.appendChild(title);
+      field.appendChild(value);
+      fields.appendChild(field);
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'history-actions';
+    const revertButton = document.createElement('button');
+    revertButton.type = 'button';
+    revertButton.className = 'secondary';
+    revertButton.textContent = 'Revertir';
+    revertButton.disabled = !userCanEdit();
+    revertButton.addEventListener('click', () => handleHistoryRevert(row));
+    actions.appendChild(revertButton);
+
+    entry.appendChild(meta);
+    entry.appendChild(fields);
+    entry.appendChild(actions);
+    historyListEl.appendChild(entry);
+  });
+}
+
+async function loadHistoryForCurrentDetail() {
+  if (!supabaseClient) {
+    updateHistoryStatus('Configura Supabase antes de consultar histórico.', true);
+    renderHistoryList([]);
+    return;
+  }
+  const originalId = detailDrawerEl?.dataset.originalId;
+  if (!originalId) {
+    updateHistoryStatus('No se pudo identificar el registro para histórico.', true);
+    renderHistoryList([]);
+    return;
+  }
+  updateHistoryStatus('Cargando histórico...', false);
+  const { data, error } = await supabaseClient
+    .from('carga_historic')
+    .select('*')
+    .eq('original_id', originalId)
+    .order('change_date', { ascending: false });
+  if (error) {
+    updateHistoryStatus(mapSupabaseError(error), true);
+    renderHistoryList([]);
+    return;
+  }
+  updateHistoryStatus(`Cambios registrados: ${(data || []).length}`, false);
+  renderHistoryList(data || []);
+}
+
+async function handleHistoryRevert(historyRow) {
+  if (!userCanEdit()) {
+    updateHistoryStatus('Solo los administradores pueden revertir cambios.', true);
+    return;
+  }
+  if (!supabaseClient) {
+    updateHistoryStatus('Configura Supabase antes de revertir.', true);
+    return;
+  }
+  if (activeTable !== 'series_carga') {
+    updateHistoryStatus('La reversión solo aplica a series de carga.', true);
+    return;
+  }
+  const identityField = detailDrawerEl.dataset.identityField;
+  const identityValue = detailDrawerEl.dataset.identityValue;
+  const originalId = detailDrawerEl.dataset.originalId;
+  if (!identityField || !identityValue) {
+    updateHistoryStatus('No se pudo identificar el registro para revertir.', true);
+    return;
+  }
+
+  const inputs = Array.from(detailDrawerBodyEl.querySelectorAll('input[name]'));
+  const lastChange = new Date().toISOString();
+  const historyPayload = buildHistoryPayload(inputs, originalId, lastChange, false);
+  const updates = {
+    codigo_serie: historyRow?.original_codigo_serie ?? null,
+    titulo_serie: historyRow?.original_titulo_serie ?? null,
+    categoria: historyRow?.original_categoria ?? null,
+    posicion: historyRow?.original_posicion ?? null,
+    last_change: lastChange,
+  };
+
+  updateHistoryStatus('Revirtiendo cambios...', false);
+  try {
+    const { error } = await supabaseClient
+      .from(activeTable)
+      .update(updates)
+      .eq(identityField, identityValue);
+    if (error) {
+      throw error;
+    }
+
+    const { error: historyError } = await supabaseClient
+      .from('carga_historic')
+      .insert([historyPayload]);
+
+    inputs.forEach((input) => {
+      if (input.name in updates) {
+        const value = updates[input.name];
+        input.value = value === null || value === undefined ? '' : String(value);
+        input.dataset.original = input.value;
+      }
+      if (input.name === 'last_change') {
+        input.value = lastChange;
+        input.dataset.original = lastChange;
+      }
+    });
+
+    if (updates.codigo_serie !== null && updates.codigo_serie !== undefined) {
+      detailDrawerEl.dataset.codigoSerie = updates.codigo_serie;
+      if (identityField === 'codigo_serie') {
+        detailDrawerEl.dataset.identityValue = updates.codigo_serie;
+      }
+    }
+
+    if (historyError) {
+      updateHistoryStatus('Revertido, pero no se pudo registrar el histórico.', true);
+      updateDetailStatus('Revertido con advertencia en histórico.', true);
+    } else {
+      updateHistoryStatus('Reversión aplicada y registrada.', false);
+      updateDetailStatus('Valores revertidos y guardados.', false);
+    }
+
+    if (activeTable) {
+      await loadRows(activeTable, activeModelFilter, activeLanguageFilter);
+    }
+    await loadHistoryForCurrentDetail();
+  } catch (error) {
+    updateHistoryStatus(mapSupabaseError(error), true);
+  }
 }
 
 function updateActivityCreateStatus(message, isError = false) {
@@ -2317,13 +2558,6 @@ async function saveDetailChanges() {
   const originalId = detailDrawerEl.dataset.originalId || null;
   const shouldLogHistory = activeTable === 'series_carga' && hasMainUpdates;
 
-  const getOriginalInputValue = (name) => {
-    const input = inputs.find((item) => item.name === name);
-    if (!input) return null;
-    const value = input.dataset.original ?? '';
-    return value === '' ? null : value;
-  };
-
   if (!hasMainUpdates && !shouldUpdateActividad) {
     updateDetailStatus('No hay cambios para guardar.', false);
     return;
@@ -2365,15 +2599,7 @@ async function saveDetailChanges() {
 
     let historyWarning = false;
     if (shouldLogHistory) {
-      const historyPayload = {
-        change_date: lastChange,
-        change_user: currentUser?.name ?? null,
-        original_id: originalId,
-        original_codigo_serie: getOriginalInputValue('codigo_serie'),
-        original_titulo_serie: getOriginalInputValue('titulo_serie'),
-        original_categoria: getOriginalInputValue('categoria'),
-        original_posicion: getOriginalInputValue('posicion'),
-      };
+      const historyPayload = buildHistoryPayload(inputs, originalId, lastChange, true);
       const { error } = await supabaseClient.from('carga_historic').insert([historyPayload]);
       if (error) {
         historyWarning = true;
@@ -2488,6 +2714,9 @@ positionSearchEl.addEventListener('input', (event) => {
 });
 createFormEl.addEventListener('submit', handleCreateSubmit);
 detailDrawerCloseEl.addEventListener('click', closeDetailDrawer);
+if (detailDrawerHistoryEl) {
+  detailDrawerHistoryEl.addEventListener('click', openHistoryModal);
+}
 detailDrawerSaveEl.addEventListener('click', saveDetailChanges);
 detailDrawerEl.addEventListener('click', (event) => {
   if (event.target === detailDrawerEl) {
@@ -2541,6 +2770,16 @@ if (languageModalEl) {
     }
   });
 }
+if (historyModalCloseEl) {
+  historyModalCloseEl.addEventListener('click', closeHistoryModal);
+}
+if (historyModalEl) {
+  historyModalEl.addEventListener('click', (event) => {
+    if (event.target === historyModalEl) {
+      closeHistoryModal();
+    }
+  });
+}
 modelModalEl.addEventListener('click', (event) => {
   if (event.target === modelModalEl) {
     closeModelModal();
@@ -2569,6 +2808,9 @@ window.addEventListener('keydown', (event) => {
     }
     if (!detailDrawerEl.hidden) {
       closeDetailDrawer();
+    }
+    if (historyModalEl && !historyModalEl.hidden) {
+      closeHistoryModal();
     }
     if (activityEditModalEl && !activityEditModalEl.hidden) {
       closeActivityEditModal();
