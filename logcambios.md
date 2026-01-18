@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.23.0
+
+- Se normalizaron los matchings entre tablas para ignorar espacios finales en códigos de serie y nombres de actividad.
+- Se ajustaron los filtros de texto para comparar valores normalizados sin espacios laterales.
+- Se actualizó la versión visible de la app.
+
 ## v0.22.0
 
 - Se compactó el espaciado vertical general del encabezado y tarjetas para una vista más baja.

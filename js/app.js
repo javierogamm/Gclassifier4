@@ -474,6 +474,15 @@ function normalizeInputValue(value) {
   return normalized === '' ? null : normalized;
 }
 
+function normalizeMatchValue(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function areMatchValues(a, b) {
+  return normalizeMatchValue(a) === normalizeMatchValue(b);
+}
+
 function updateDetailStatus(message, isError = false) {
   if (!detailDrawerStatusEl) return;
   detailDrawerStatusEl.textContent = message || '';
@@ -503,7 +512,7 @@ function rowMatchesField(row, fields, filterValue) {
   return fields.some((field) => {
     const raw = row?.[field];
     if (raw === null || raw === undefined) return false;
-    return String(raw).toLowerCase().includes(filterValue);
+    return normalizeMatchValue(raw).toLowerCase().includes(filterValue);
   });
 }
 
@@ -1409,10 +1418,10 @@ function updateActividadesRowsData(context, updates) {
   const matchByKeys = context.actividadField;
   const targetIndex = actividadesRows.findIndex((row) => {
     if (matchById) {
-      return row?.[context.identityField] === context.identityValue;
+      return areMatchValues(row?.[context.identityField], context.identityValue);
     }
     if (matchByKeys) {
-      return row?.[context.actividadField] === context.actividadValue;
+      return areMatchValues(row?.[context.actividadField], context.actividadValue);
     }
     return false;
   });
@@ -1444,9 +1453,9 @@ function openActivityEditModal(rowEl) {
   const editableFields = getEditableActivityFields();
   const rowData = actividadesRows.find((row) => {
     if (context.identityField && context.identityValue) {
-      return row?.[context.identityField] === context.identityValue;
+      return areMatchValues(row?.[context.identityField], context.identityValue);
     }
-    return row?.[context.actividadField] === context.actividadValue;
+    return areMatchValues(row?.[context.actividadField], context.actividadValue);
   }) || {};
   editableFields.forEach((field) => {
     const label = document.createElement('label');
@@ -1585,7 +1594,8 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
     renderLinkedSeriesTable([], tableEl);
     return;
   }
-  if (!actividadValue) {
+  const actividadMatchValue = normalizeMatchValue(actividadValue);
+  if (!actividadMatchValue) {
     updateLinkedSeriesStatus(statusEl, 'No se pudo identificar la actividad para vinculación.', true);
     renderLinkedSeriesTable([], tableEl);
     return;
@@ -1594,55 +1604,63 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
   const { data, error } = await supabaseClient
     .from('series_vinculacion')
     .select('*')
-    .eq('actividad', actividadValue);
+    .ilike('actividad', `${actividadMatchValue}%`);
   if (error) {
     updateLinkedSeriesStatus(statusEl, mapSupabaseError(error), true);
     renderLinkedSeriesTable([], tableEl);
     return;
   }
-  if (!data?.length) {
+  const matchedRows = (data || []).filter((row) => areMatchValues(row?.actividad, actividadMatchValue));
+  if (!matchedRows.length) {
     updateLinkedSeriesStatus(statusEl, 'Series vinculadas: 0', false);
     renderLinkedSeriesTable([], tableEl);
     if (tableEl) tableEl.dataset.loaded = 'true';
     return;
   }
 
-  const vinculacionMap = getLinkedSeriesFieldMap(data);
-  const codes = Array.from(
-    new Set(
-      data
-        .map((row) => row?.[vinculacionMap.codigoSerie])
-        .filter((codigo) => codigo && String(codigo).trim() !== '')
-    )
-  );
+  const vinculacionMap = getLinkedSeriesFieldMap(matchedRows);
+  const codes = new Set();
+  matchedRows.forEach((row) => {
+    const rawCode = row?.[vinculacionMap.codigoSerie];
+    if (rawCode === null || rawCode === undefined) return;
+    const raw = String(rawCode);
+    const trimmed = raw.trim();
+    if (trimmed) codes.add(trimmed);
+    if (raw && raw !== trimmed) codes.add(raw);
+  });
 
   let cargaRows = [];
-  if (codes.length) {
+  if (codes.size) {
     const { data: cargaData, error: cargaError } = await supabaseClient
       .from('series_carga')
       .select('*')
-      .in('codigo_serie', codes);
+      .in('codigo_serie', Array.from(codes));
     if (!cargaError) {
       cargaRows = cargaData || [];
     }
   }
 
   const cargaMap = getSeriesCargaFieldMap(cargaRows);
-  const cargaByCode = new Map(
-    cargaRows.map((row) => [
-      row?.[cargaMap.codigoSerie],
-      {
-        nombre: row?.[cargaMap.nombre],
-        modelo: row?.[cargaMap.modelo],
-      },
-    ])
-  );
+  const cargaByCode = new Map();
+  cargaRows.forEach((row) => {
+    const key = normalizeMatchValue(row?.[cargaMap.codigoSerie]);
+    if (!key) return;
+    cargaByCode.set(key, {
+      nombre: row?.[cargaMap.nombre],
+      modelo: row?.[cargaMap.modelo],
+    });
+  });
 
-  const mergedRows = data.map((row) => ({
-    codigo: row?.[vinculacionMap.codigoSerie] ?? '—',
-    nombre: cargaByCode.get(row?.[vinculacionMap.codigoSerie])?.nombre ?? '—',
-    modelo: cargaByCode.get(row?.[vinculacionMap.codigoSerie])?.modelo ?? '—',
-  }));
+  const mergedRows = matchedRows.map((row) => {
+    const codigoRaw = row?.[vinculacionMap.codigoSerie];
+    const codigoKey = normalizeMatchValue(codigoRaw);
+    const cargaInfo = codigoKey ? cargaByCode.get(codigoKey) : null;
+    return {
+      codigo: codigoRaw ?? '—',
+      nombre: cargaInfo?.nombre ?? '—',
+      modelo: cargaInfo?.modelo ?? '—',
+    };
+  });
 
   updateLinkedSeriesStatus(statusEl, `Series vinculadas: ${mergedRows.length}`, false);
   renderLinkedSeriesTable(mergedRows, tableEl);
