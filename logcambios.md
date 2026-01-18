@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.20.0
+
+- Se agregó un botón de login en la esquina superior derecha con indicador de sesión activa.
+- Se incorporó un modal para iniciar sesión o registrar usuarios contra la tabla `users` (campos id, created_at, name, pass).
+- Se guardó el usuario autenticado en almacenamiento local para mantener la sesión al recargar.
+- Se actualizó la versión visible de la app.
+
 ## v0.19.0
 
 - Se ajustó la carga de series vinculadas para tomar el nombre desde `series_carga` usando la relación con `codigo_serie`.

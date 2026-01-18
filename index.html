@@ -45,6 +45,19 @@
         min-width: 220px;
       }
 
+      .header-auth {
+        display: grid;
+        gap: 8px;
+        justify-items: end;
+      }
+
+      .header-auth-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
       .card {
         background: #ffffff;
         border-radius: 8px;
@@ -705,6 +718,13 @@
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
         <div class="header-status" aria-live="polite">
+          <div class="header-auth">
+            <span id="login-user" class="muted">Sesión: sin iniciar</span>
+            <div class="header-auth-actions">
+              <button id="login-button" type="button">Login</button>
+              <button id="logout-button" class="secondary" type="button" hidden>Salir</button>
+            </div>
+          </div>
           <div class="status" id="status" data-state="warning">
             <span id="status-icon">⚠️</span>
             <span id="status-text">Esperando configuración</span>
@@ -712,7 +732,7 @@
           </div>
           <p id="status-detail" class="muted"></p>
           <div id="message" class="muted"></div>
-          <p class="muted"><strong>Versión:</strong> v0.19.0</p>
+          <p class="muted"><strong>Versión:</strong> v0.20.0</p>
         </div>
       </header>
 
@@ -801,6 +821,32 @@
           <div class="form-actions">
             <button type="submit">Guardar cambios</button>
             <span id="activity-edit-status" class="form-status"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="login-modal" class="modal" hidden>
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="login-modal-title">
+        <div class="modal-header">
+          <h3 id="login-modal-title">Login / Registro</h3>
+          <button id="login-modal-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <form id="login-form" class="form-grid">
+          <label>
+            Nombre
+            <input id="login-name" type="text" autocomplete="username" required />
+          </label>
+          <label>
+            Contraseña
+            <input id="login-pass" type="password" autocomplete="current-password" required />
+          </label>
+          <div class="form-actions">
+            <span id="login-status" class="form-status"></span>
+            <div class="inline-input">
+              <button id="login-submit" type="button">Iniciar sesión</button>
+              <button id="register-submit" class="secondary" type="button">Registrar</button>
+            </div>
           </div>
         </form>
       </div>
