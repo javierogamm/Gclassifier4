@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.26.0
+
+- Se añadió la exportación CSV UTF-8 de la versión e idioma activos para las tablas `series_carga` y `series_vinculacion`.
+- Los archivos generados respetan el formato MODELO(_IDIOMA)_CARGA/VINCULACION y los encabezados definidos para RPA.
+- Se actualizó la versión visible de la app.
+
 ## v0.25.0
 
 - El modal de creación ahora muestra un campo de título por cada idioma disponible en el modelo seleccionado.

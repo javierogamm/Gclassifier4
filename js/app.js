@@ -119,6 +119,39 @@ const SERIES_CARGA_FIELD_CANDIDATES = {
   nombre: ['titulo_serie', 'nombre_serie', 'nombre', 'titulo'],
   modelo: ['modelo', 'nombre_entidad', 'modelo_serie'],
 };
+const SERIES_CARGA_EXPORT_FIELDS = [
+  { header: 'Nombre Entidad', key: 'nombre_entidad' },
+  { header: 'Sobrescribir', key: 'sobrescribir' },
+  { header: 'Posición', key: 'posicion' },
+  { header: 'Código Serie', key: 'codigo_serie' },
+  { header: 'Título Serie', key: 'titulo_serie' },
+  { header: 'Categoría', key: 'categoria' },
+  { header: 'Unidad gestora', key: 'unidad_gestora' },
+  { header: 'Libro Oficial', key: 'libro_oficial' },
+  { header: 'Nivel de seguridad', key: 'nivel_seguridad' },
+  { header: 'Advertencia de seguridad', key: 'advertencia_seguridad' },
+  { header: 'Sensibilidad datos personales', key: 'sensibilidad_datos_personales' },
+  { header: 'Nivel de confidencialidad', key: 'nivel_confidencialidad' },
+  { header: 'Tipo de acceso', key: 'tipo_acceso' },
+  { header: 'Condiciones de reutilización', key: 'condiciones_reutilizacion' },
+  { header: 'Código de la causa de limitación', key: 'codigo_causa_limitacion' },
+  { header: 'Normativa', key: 'normativa' },
+  { header: 'Valor primario', key: 'valor_primario' },
+  { header: 'Plazo', key: 'plazo' },
+  { header: 'Valor secundario', key: 'valor_secundario' },
+  { header: 'Dictamen', key: 'dictamen' },
+  { header: 'Documento esencial', key: 'documento_esencial' },
+  { header: 'Acción dictaminada', key: 'accion_dictaminada' },
+  { header: 'Ejecución', key: 'ejecucion' },
+  { header: 'Motivación', key: 'motivacion' },
+];
+const SERIES_VINCULACION_EXPORT_FIELDS = [
+  { header: 'Nombre Entidad', key: 'nombre_entidad' },
+  { header: 'Sobrescribir', key: 'sobrescribir' },
+  { header: 'Cod', key: 'cod' },
+  { header: 'Actividad', key: 'actividad' },
+  { header: 'Plazos', key: 'plazos' },
+];
 
 async function fetchActividadForCodigoSerie(codigoSerie) {
   if (!supabaseClient || !codigoSerie) return null;
@@ -577,6 +610,117 @@ function normalizeLanguageValue(value) {
   return String(value).trim();
 }
 
+function buildFileSegment(value, fallback) {
+  const raw = value ?? fallback ?? '';
+  const cleaned = String(raw)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return cleaned ? cleaned.toUpperCase() : String(fallback || '').toUpperCase() || 'MODELO';
+}
+
+function createCsvValue(value) {
+  if (value === null || value === undefined) return '';
+  const text = String(value);
+  if (/["\n,]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function buildCsvContent(rows, columns) {
+  const headerRow = columns.map((column) => createCsvValue(column.header)).join(',');
+  const dataRows = rows.map((row) =>
+    columns.map((column) => createCsvValue(row?.[column.key])).join(','),
+  );
+  return ['\uFEFF' + headerRow, ...dataRows].join('\n');
+}
+
+function triggerCsvDownload(filename, csvContent) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+async function fetchRowsForExport(table, modelFilter, languageFilter) {
+  const { data, error } = await fetchAllRows(table, modelFilter, languageFilter);
+  if (!error) return { data, error: null };
+  if (languageFilter && isMissingColumnError(error, 'idioma')) {
+    return fetchAllRows(table, modelFilter, null);
+  }
+  return { data: null, error };
+}
+
+async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
+  if (!supabaseClient) {
+    showMessage('Configura Supabase antes de exportar.', true);
+    return;
+  }
+  if (!cargaTable || !vinculacionTable) {
+    showMessage('No se encontró configuración de exportación para este cuadro.', true);
+    return;
+  }
+  if (!activeTable || activeTable !== cargaTable) {
+    showMessage(
+      `Selecciona el cuadro ${label || cargaTable} antes de exportar sus CSV.`,
+      true,
+    );
+    return;
+  }
+  if (!activeModelFilter) {
+    showMessage('Selecciona un modelo antes de exportar.', true);
+    return;
+  }
+  if (availableLanguages.length > 0 && !activeLanguageFilter) {
+    showMessage('Selecciona un idioma antes de exportar.', true);
+    return;
+  }
+
+  showMessage('Generando CSV...', false);
+
+  const { data: cargaRows, error: cargaError } = await fetchRowsForExport(
+    cargaTable,
+    activeModelFilter,
+    activeLanguageFilter,
+  );
+  if (cargaError) {
+    showMessage(mapSupabaseError(cargaError), true);
+    return;
+  }
+
+  const { data: vinculacionRows, error: vinculacionError } = await fetchRowsForExport(
+    vinculacionTable,
+    activeModelFilter,
+    activeLanguageFilter,
+  );
+  if (vinculacionError) {
+    showMessage(mapSupabaseError(vinculacionError), true);
+    return;
+  }
+
+  const modelSegment = buildFileSegment(activeModelFilter.label, 'MODELO');
+  const languageSegment = activeLanguageFilter
+    ? `_${buildFileSegment(activeLanguageFilter.label, 'IDIOMA')}`
+    : '';
+
+  const cargaFilename = `${modelSegment}${languageSegment}_CARGA.csv`;
+  const vinculacionFilename = `${modelSegment}${languageSegment}_VINCULACION.csv`;
+
+  const cargaCsv = buildCsvContent(cargaRows || [], SERIES_CARGA_EXPORT_FIELDS);
+  const vinculacionCsv = buildCsvContent(vinculacionRows || [], SERIES_VINCULACION_EXPORT_FIELDS);
+
+  triggerCsvDownload(cargaFilename, cargaCsv);
+  triggerCsvDownload(vinculacionFilename, vinculacionCsv);
+  showMessage('CSV generados correctamente.', false);
+}
+
 function isMissingColumnError(error, columnName) {
   const message = String(error?.message || '').toLowerCase();
   return message.includes(`column "${columnName}"`) || message.includes(`column '${columnName}'`);
@@ -721,7 +865,15 @@ function renderCatalog(entities) {
       >
         Actividades
       </button>
-      <button class="secondary" type="button">Exportar CSV RPA</button>
+      <button
+        class="secondary"
+        type="button"
+        data-export-carga-table="${entity.carga.table}"
+        data-export-vinculacion-table="${entity.vinculacion?.table || ''}"
+        data-label="${entity.label}"
+      >
+        Exportar CSV RPA
+      </button>
     `;
     catalogEl.appendChild(wrapper);
   });
@@ -741,6 +893,16 @@ function renderCatalog(entities) {
       const table = target.getAttribute('data-actividades-table');
       const label = target.getAttribute('data-label');
       await openActivitiesView(table, label);
+    });
+  });
+
+  catalogEl.querySelectorAll('button[data-export-carga-table]').forEach((button) => {
+    button.addEventListener('click', async (event) => {
+      const target = event.currentTarget;
+      const cargaTable = target.getAttribute('data-export-carga-table');
+      const vinculacionTable = target.getAttribute('data-export-vinculacion-table');
+      const label = target.getAttribute('data-label');
+      await exportCsvForModel({ cargaTable, vinculacionTable, label });
     });
   });
 }
