@@ -13,7 +13,7 @@
 
       body {
         margin: 0;
-        padding: 24px;
+        padding: 12px;
         background: #ffffff;
       }
 
@@ -26,17 +26,18 @@
       header {
         display: flex;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 12px;
         justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 24px;
+        align-items: center;
+        margin-bottom: 12px;
       }
 
       .header-main {
         display: flex;
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
+        flex-direction: row;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
       }
 
       .connection-status {
@@ -64,13 +65,26 @@
         justify-content: flex-end;
       }
 
+      h1,
+      h2 {
+        margin: 0;
+        line-height: 1.1;
+      }
+
       .card {
         background: #ffffff;
         border-radius: 8px;
-        padding: 16px;
+        padding: 12px;
         border: 1px solid #d0d7e2;
         box-shadow: none;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
+      }
+
+      .card-flat {
+        border: none;
+        padding: 0;
+        margin-bottom: 12px;
+        background: transparent;
       }
 
       .status {
@@ -130,12 +144,41 @@
         gap: 16px;
       }
 
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+
+      .catalog-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .catalog-actions-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .section-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
       .filters {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 12px;
         align-items: end;
-        margin-bottom: 16px;
+        margin-bottom: 10px;
       }
 
       .filters label {
@@ -243,7 +286,7 @@
         justify-content: space-between;
         gap: 12px;
         flex-wrap: wrap;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
 
       .results-list {
@@ -732,7 +775,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.21.0</p>
+            <p class="version-text"><strong>Versión:</strong> v0.22.0</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -752,9 +795,11 @@
       <div id="message" class="muted"></div>
 
       <main id="cuadros-view">
-        <section class="card">
-          <h2>Gestión de cuadros</h2>
-          <div id="catalog" class="grid"></div>
+        <section class="card card-flat">
+          <div class="section-header">
+            <h2>Gestión de cuadros</h2>
+            <div id="catalog" class="catalog-actions"></div>
+          </div>
         </section>
 
         <section class="card">
@@ -786,20 +831,18 @@
         </section>
       </main>
 
-      <section id="activities-view" class="card" hidden>
-        <div class="view-toggle">
+      <section id="activities-view" class="card card-flat" hidden>
+        <div class="section-header">
           <h2>Gestión de actividades</h2>
-          <button id="back-to-cuadros" class="secondary" type="button">
-            Volver a gestión de cuadros
-          </button>
-        </div>
-        <div id="activities-message" class="muted"></div>
-          <div class="activities-toolbar">
-          <div class="activities-buttons">
+          <div class="section-actions">
+            <button id="back-to-cuadros" class="secondary" type="button">
+              Volver a gestión de cuadros
+            </button>
             <button id="activities-expand-all" class="secondary" type="button">Desplegar todo</button>
             <button id="activities-collapse-all" class="secondary" type="button">Contraer todo</button>
           </div>
         </div>
+        <div id="activities-message" class="muted"></div>
         <form id="activity-create-form" class="activities-form">
           <label>
             Código de actividad

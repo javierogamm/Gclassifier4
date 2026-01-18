@@ -555,27 +555,25 @@ function renderCatalog(entities) {
   catalogEl.innerHTML = '';
   entities.forEach((entity) => {
     const wrapper = document.createElement('div');
-    wrapper.className = 'entity';
+    wrapper.className = 'catalog-actions-group';
     wrapper.innerHTML = `
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button
-          class="secondary"
-          data-table="${entity.carga.table}"
-          data-label="${entity.label}"
-          aria-label="Seleccionar cuadro ${entity.label}"
-        >
-          Seleccionar cuadro
-        </button>
-        <button
-          class="secondary"
-          type="button"
-          data-actividades-table="${entity.carga.table}"
-          data-label="${entity.label}"
-        >
-          Actividades
-        </button>
-        <button class="secondary" type="button">Exportar CSV RPA</button>
-      </div>
+      <button
+        class="secondary"
+        data-table="${entity.carga.table}"
+        data-label="${entity.label}"
+        aria-label="Seleccionar cuadro ${entity.label}"
+      >
+        Seleccionar cuadro
+      </button>
+      <button
+        class="secondary"
+        type="button"
+        data-actividades-table="${entity.carga.table}"
+        data-label="${entity.label}"
+      >
+        Actividades
+      </button>
+      <button class="secondary" type="button">Exportar CSV RPA</button>
     `;
     catalogEl.appendChild(wrapper);
   });
@@ -636,7 +634,7 @@ async function loadRows(table, modelFilter = null) {
   const filteredRows = filterRowsWithHierarchy(allRows, searchFilters);
   renderResults(filteredRows);
   updateResultsTitle(modelFilter, filteredRows.length);
-  showMessage(`Resultados cargados: ${filteredRows.length} filas.`, false);
+  showMessage('', false);
 }
 
 function getRowIdentity(row, fallback) {

@@ -1,5 +1,13 @@
 # Log de cambios
 
+## v0.22.0
+
+- Se compactó el espaciado vertical general del encabezado y tarjetas para una vista más baja.
+- El título principal quedó alineado a la derecha del estado de conexión.
+- Se quitó el mensaje superior de resultados cargados al finalizar la consulta.
+- Se eliminó el recuadro de Gestión de cuadros/actividades y se alinearon sus botones a la derecha del título.
+- Se actualizó la versión visible de la app.
+
 ## v0.21.0
 
 - Se compactó el estado de conexión en una caja superior izquierda, mostrando solo “Conectado OK” y la versión.
