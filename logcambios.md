@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.30.0
+
+- Se añadió el registro desde el front en `carga_historic` para cambios en `series_carga`, guardando usuario y valores previos editados.
+- Se actualizó la versión visible de la app.
+
 ## v0.29.0
 
 - Se añadió el registro automático de histórico para cambios en `series_carga`, guardando los valores previos en `series_carga_historico`.
