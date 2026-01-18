@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.33.2
+
+- El filtrado ahora incluye descendientes del elemento coincidente para mantener la jerarquía completa.
+- Al buscar, el acordeón se despliega automáticamente para mostrar toda la jerarquía filtrada.
+- Se actualizó la versión visible de la app.
+
 ## v0.33.1
 
 - El buscador vuelve a incluir los elementos jerárquicamente superiores hasta la raíz.
