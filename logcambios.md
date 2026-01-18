@@ -1,5 +1,17 @@
 # Log de cambios
 
+## v0.33.1
+
+- El buscador vuelve a incluir los elementos jerárquicamente superiores hasta la raíz.
+- Se actualizó la versión visible de la app.
+
+## v0.33.0
+
+- El buscador ahora solo muestra los elementos que coinciden, sin incluir niveles superiores.
+- Al guardar cambios en un elemento, el acordeón permanece abierto y conserva el orden actual.
+- La ficha de detalle actualiza la información en pantalla sin recargar el listado.
+- Se actualizó la versión visible de la app.
+
 ## v0.32.0
 
 - Se reemplazaron los botones de aplicar/limpiar filtros y ver detalles por iconos compactos.
