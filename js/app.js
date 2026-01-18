@@ -1179,6 +1179,19 @@ function getRowIdentity(row, fallback) {
   return String(raw).trim();
 }
 
+function getRowIdentityInfo(row) {
+  if (row?.id !== undefined && row?.id !== null) {
+    return { field: 'id', value: String(row.id) };
+  }
+  if (row?.codigo_serie !== undefined && row?.codigo_serie !== null) {
+    return { field: 'codigo_serie', value: String(row.codigo_serie) };
+  }
+  if (row?.cod !== undefined && row?.cod !== null) {
+    return { field: 'cod', value: String(row.cod) };
+  }
+  return { field: '', value: '' };
+}
+
 function getParentIdentity(row) {
   const raw = row?.posicion;
   if (raw === null || raw === undefined) return null;
@@ -1240,27 +1253,7 @@ function filterRowsWithHierarchy(rows, searchFilters) {
     categoria: normalizeFilterValue(searchFilters.categoria),
   };
 
-  const roots = buildHierarchy(rows);
-  const includedIdentities = new Set();
-
-  const includeNodeAndDescendants = (node) => {
-    includedIdentities.add(node.identity);
-    node.children.forEach((child) => includeNodeAndDescendants(child));
-  };
-
-  const visitNode = (node) => {
-    if (rowMatchesSearchFilters(node.row, normalizedFilters)) {
-      includeNodeAndDescendants(node);
-      return;
-    }
-    node.children.forEach((child) => visitNode(child));
-  };
-
-  roots.forEach((root) => visitNode(root));
-
-  return (rows || []).filter((row, index) =>
-    includedIdentities.has(getRowIdentity(row, `row-${index + 1}`)),
-  );
+  return (rows || []).filter((row) => rowMatchesSearchFilters(row, normalizedFilters));
 }
 
 function getToneForCategoria(categoria, depth) {
@@ -1276,12 +1269,18 @@ function getToneForCategoria(categoria, depth) {
   return depth === 0 ? 'section' : 'series';
 }
 
+function getDisplayValuesForRow(row) {
+  return {
+    codigoSerie: row?.nombre_serie || row?.codigo_serie || row?.cod || '—',
+    tituloSerie:
+      row?.titulo_serie || row?.nombre_entidad || row?.nombre_serie || 'Registro sin título',
+    categoria: row?.categoria || row?.actividad || '—',
+  };
+}
+
 function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
   const { row } = node;
-  const codigoSerie = row?.nombre_serie || row?.codigo_serie || row?.cod || '—';
-  const tituloSerie =
-    row?.titulo_serie || row?.nombre_entidad || row?.nombre_serie || 'Registro sin título';
-  const categoria = row?.categoria || row?.actividad || '—';
+  const { codigoSerie, tituloSerie, categoria } = getDisplayValuesForRow(row);
   const toneClass = getToneForCategoria(categoria, depth);
   const hierarchyMarkup = hierarchyLabel
     ? `<span class="hierarchy-number">${hierarchyLabel}</span>`
@@ -1289,8 +1288,11 @@ function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
   const hasChildren = Boolean(node.children && node.children.length > 0);
 
   const details = document.createElement('details');
+  const identityInfo = getRowIdentityInfo(row);
   details.className = `result-item ${toneClass}${hasChildren ? ' has-children' : ''}`;
   details.dataset.depth = depth;
+  details.dataset.identityField = identityInfo.field;
+  details.dataset.identityValue = identityInfo.value;
   const summary = document.createElement('summary');
   summary.innerHTML = `
     <div class="result-summary">
@@ -1357,6 +1359,41 @@ function renderResults(rows) {
 
   resultsEl.innerHTML = '';
   resultsEl.appendChild(list);
+}
+
+function findResultItemElement(identityField, identityValue) {
+  if (!resultsEl || !identityField) return null;
+  const detailsList = resultsEl.querySelectorAll('details.result-item');
+  for (const detail of detailsList) {
+    if (
+      detail.dataset.identityField === identityField &&
+      detail.dataset.identityValue === String(identityValue)
+    ) {
+      return detail;
+    }
+  }
+  return null;
+}
+
+function updateResultItemSummary(detailEl, row) {
+  if (!detailEl || !row) return;
+  const { codigoSerie, tituloSerie, categoria } = getDisplayValuesForRow(row);
+  const codigoEl = detailEl.querySelector('.codigo-serie-badge');
+  const tituloEl = detailEl.querySelector('.titulo-serie');
+  const categoriaEl = detailEl.querySelector('.categoria-serie');
+  if (codigoEl) codigoEl.textContent = codigoSerie;
+  if (tituloEl) tituloEl.textContent = tituloSerie;
+  if (categoriaEl) categoriaEl.textContent = categoria;
+}
+
+function applyUpdatesToActiveRow(identityField, identityValue, updates) {
+  if (!identityField || !identityValue) return null;
+  const index = activeRows.findIndex(
+    (row) => String(row?.[identityField]) === String(identityValue),
+  );
+  if (index === -1) return null;
+  activeRows[index] = { ...activeRows[index], ...updates };
+  return activeRows[index];
 }
 
 function updateResultsTitle(modelFilter, count, languageFilter = null) {
@@ -1725,19 +1762,9 @@ async function openDetailDrawer(row, title) {
 
   const codigoSerie = row?.codigo_serie ?? row?.cod ?? '';
   detailDrawerEl.dataset.codigoSerie = codigoSerie;
-  if (row?.id !== undefined && row?.id !== null) {
-    detailDrawerEl.dataset.identityField = 'id';
-    detailDrawerEl.dataset.identityValue = row.id;
-  } else if (row?.codigo_serie !== undefined && row?.codigo_serie !== null) {
-    detailDrawerEl.dataset.identityField = 'codigo_serie';
-    detailDrawerEl.dataset.identityValue = row.codigo_serie;
-  } else if (row?.cod !== undefined && row?.cod !== null) {
-    detailDrawerEl.dataset.identityField = 'cod';
-    detailDrawerEl.dataset.identityValue = row.cod;
-  } else {
-    detailDrawerEl.dataset.identityField = '';
-    detailDrawerEl.dataset.identityValue = '';
-  }
+  const identityInfo = getRowIdentityInfo(row);
+  detailDrawerEl.dataset.identityField = identityInfo.field;
+  detailDrawerEl.dataset.identityValue = identityInfo.value;
   detailDrawerEl.dataset.originalId = row?.id ?? '';
   const actividad = await fetchActividadForCodigoSerie(codigoSerie);
   const fields = [
@@ -2585,8 +2612,10 @@ async function saveDetailChanges() {
 
   try {
     const lastChange = new Date().toISOString();
+    const rowUpdates = { ...updates };
     if (hasMainUpdates) {
       updates.last_change = lastChange;
+      rowUpdates.last_change = lastChange;
       const { error } = await supabaseClient
         .from(activeTable)
         .update(updates)
@@ -2602,6 +2631,7 @@ async function saveDetailChanges() {
       if (error) {
         throw error;
       }
+      rowUpdates.last_change = lastChange;
     }
 
     if (shouldUpdateActividad) {
@@ -2630,13 +2660,29 @@ async function saveDetailChanges() {
       input.dataset.original = input.value;
     });
 
+    const updatedRow = applyUpdatesToActiveRow(identityField, identityValue, rowUpdates);
+    if (updatedRow) {
+      const detailEl = findResultItemElement(identityField, identityValue);
+      updateResultItemSummary(detailEl, updatedRow);
+      if (detailEl && updates[identityField] !== undefined) {
+        detailEl.dataset.identityValue = String(updates[identityField]);
+      }
+    }
+    if (updates.codigo_serie !== undefined) {
+      detailDrawerEl.dataset.codigoSerie = updates.codigo_serie ?? '';
+    }
+    if (updates[identityField] !== undefined) {
+      detailDrawerEl.dataset.identityValue = String(updates[identityField]);
+    }
+    if (updatedRow) {
+      const { tituloSerie } = getDisplayValuesForRow(updatedRow);
+      detailDrawerTitleEl.textContent = tituloSerie;
+    }
+
     if (historyWarning) {
       updateDetailStatus('Cambios guardados, pero no se pudo registrar el histórico.', true);
     } else {
       updateDetailStatus('Cambios guardados en Supabase.', false);
-    }
-    if (activeTable) {
-      await loadRows(activeTable, activeModelFilter, activeLanguageFilter);
     }
   } catch (error) {
     updateDetailStatus(mapSupabaseError(error), true);
