@@ -44,7 +44,7 @@ const createModalEl = document.getElementById('create-modal');
 const createModalCloseEl = document.getElementById('create-modal-close');
 const createFormEl = document.getElementById('create-form');
 const createCodigoSerieEl = document.getElementById('create-codigo-serie');
-const createTituloSerieEl = document.getElementById('create-titulo-serie');
+const createTituloSeriesContainerEl = document.getElementById('create-titulo-series');
 const createCategoriaEl = document.getElementById('create-categoria');
 const createPosicionEl = document.getElementById('create-posicion');
 const createPosicionSearchEl = document.getElementById('create-posicion-search');
@@ -215,9 +215,9 @@ function applyAccessControl() {
   if (createCodigoSerieEl) {
     createCodigoSerieEl.disabled = !canEdit;
   }
-  if (createTituloSerieEl) {
-    createTituloSerieEl.disabled = !canEdit;
-  }
+  getCreateTitleInputs().forEach((input) => {
+    input.disabled = !canEdit;
+  });
   if (createCategoriaEl) {
     createCategoriaEl.disabled = !canEdit;
   }
@@ -1023,6 +1023,42 @@ function refreshCreateOptions() {
   });
 }
 
+function getCreateTitleInputs() {
+  if (!createTituloSeriesContainerEl) return [];
+  return Array.from(
+    createTituloSeriesContainerEl.querySelectorAll('input[data-create-title="true"]'),
+  );
+}
+
+function renderCreateTitleInputs() {
+  if (!createTituloSeriesContainerEl) return;
+  createTituloSeriesContainerEl.innerHTML = '';
+
+  const hasLanguages = availableLanguages.length > 0;
+  const languageOptions = hasLanguages
+    ? availableLanguages
+    : [{ label: 'Título de serie', value: null }];
+
+  languageOptions.forEach((option, index) => {
+    const label = document.createElement('label');
+    const text = document.createElement('span');
+    text.textContent = hasLanguages
+      ? `Título de serie (${option.label})`
+      : 'Título de serie';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.required = true;
+    input.dataset.createTitle = 'true';
+    input.name = hasLanguages ? `titulo_serie_${index + 1}` : 'titulo_serie';
+    if (hasLanguages) {
+      input.dataset.language = option.value ?? '';
+    }
+    label.appendChild(text);
+    label.appendChild(input);
+    createTituloSeriesContainerEl.appendChild(label);
+  });
+}
+
 function openCreateModal() {
   if (!userCanEdit()) {
     showMessage('Solo los administradores pueden crear elementos.', true);
@@ -1034,7 +1070,7 @@ function openCreateModal() {
   }
   setCreateStatus('', false);
   createCodigoSerieEl.value = '';
-  createTituloSerieEl.value = '';
+  renderCreateTitleInputs();
   createCategoriaEl.value = '';
   setPositionValue('', 'Raíz');
   createModalEl.hidden = false;
@@ -1121,31 +1157,55 @@ async function handleCreateSubmit(event) {
   }
 
   const codigoSerie = normalizeInputValue(createCodigoSerieEl.value);
-  const tituloSerie = normalizeInputValue(createTituloSerieEl.value);
-  if (!codigoSerie || !tituloSerie) {
+  const tituloInputs = getCreateTitleInputs();
+  if (!codigoSerie || tituloInputs.length === 0) {
     setCreateStatus('Completa código y título antes de crear.', true);
+    return;
+  }
+
+  const tituloEntries = tituloInputs.map((input) => ({
+    value: normalizeInputValue(input.value),
+    language: input.dataset.language || null,
+  }));
+
+  const hasEmptyTitle = tituloEntries.some((entry) => !entry.value);
+  if (hasEmptyTitle) {
+    const message =
+      availableLanguages.length > 0
+        ? 'Completa todos los títulos por idioma antes de crear.'
+        : 'Completa código y título antes de crear.';
+    setCreateStatus(message, true);
     return;
   }
 
   const categoria = normalizeInputValue(createCategoriaEl.value);
   const posicion = normalizeInputValue(createPosicionEl.dataset.value ?? '');
-
-  const payload = {
+  const basePayload = {
     codigo_serie: codigoSerie,
-    titulo_serie: tituloSerie,
     last_change: new Date().toISOString(),
   };
   if (categoria !== null) {
-    payload.categoria = categoria;
+    basePayload.categoria = categoria;
   }
   if (posicion !== null) {
-    payload.posicion = posicion;
+    basePayload.posicion = posicion;
   }
+  if (activeModelFilter) {
+    basePayload.modelo = activeModelFilter.isNull ? null : activeModelFilter.value;
+  }
+
+  const payloads = tituloEntries.map((entry) => {
+    const payload = { ...basePayload, titulo_serie: entry.value };
+    if (availableLanguages.length > 0) {
+      payload.idioma = entry.language;
+    }
+    return payload;
+  });
 
   createSubmitButton.disabled = true;
   setCreateStatus('Creando elemento...', false);
 
-  const { error } = await supabaseClient.from(activeTable).insert([payload]);
+  const { error } = await supabaseClient.from(activeTable).insert(payloads);
   if (error) {
     setCreateStatus(mapSupabaseError(error), true);
     createSubmitButton.disabled = false;

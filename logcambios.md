@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.25.0
+
+- El modal de creación ahora muestra un campo de título por cada idioma disponible en el modelo seleccionado.
+- Al guardar, se crean filas por idioma con el mismo código, posición, categoría y modelo, asignando el idioma correspondiente.
+- Se actualizó la versión visible de la app.
+
 ## v0.24.0
 
 - Se incorporó la selección de idioma al elegir un modelo con columna `idioma`, mostrando un modal para escoger la versión a visualizar.
