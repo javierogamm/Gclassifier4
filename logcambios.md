@@ -1,5 +1,13 @@
 # Log de cambios
 
+## v0.32.0
+
+- Se reemplazaron los botones de aplicar/limpiar filtros y ver detalles por iconos compactos.
+- Se movieron los controles de desplegar/contraer justo encima de los acordeones de resultados y actividades.
+- Se reubicó el botón de exportar PDF junto al de exportar CSV en el catálogo.
+- Se eliminaron los ejemplos en los campos de búsqueda.
+- Se actualizó la versión visible de la app.
+
 ## v0.31.0
 
 - Se añadió el botón "Histórico de cambios" en el detalle de series para usuarios admin, con modal dedicado.

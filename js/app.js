@@ -39,7 +39,6 @@ const clearFiltersButton = document.getElementById('clear-filters');
 const expandAllButton = document.getElementById('expand-all');
 const collapseAllButton = document.getElementById('collapse-all');
 const resultsTitleEl = document.getElementById('results-title');
-const exportPdfButton = document.getElementById('export-pdf');
 const openCreateModalButton = document.getElementById('open-create-modal');
 const createModalEl = document.getElementById('create-modal');
 const createModalCloseEl = document.getElementById('create-modal-close');
@@ -964,6 +963,14 @@ function renderCatalog(entities) {
       >
         Exportar CSV RPA
       </button>
+      <button
+        class="secondary"
+        type="button"
+        data-export-pdf="true"
+        data-auth-required="true"
+      >
+        Exportar PDF
+      </button>
     `;
     catalogEl.appendChild(wrapper);
   });
@@ -993,6 +1000,12 @@ function renderCatalog(entities) {
       const vinculacionTable = target.getAttribute('data-export-vinculacion-table');
       const label = target.getAttribute('data-label');
       await exportCsvForModel({ cargaTable, vinculacionTable, label });
+    });
+  });
+
+  catalogEl.querySelectorAll('button[data-export-pdf]').forEach((button) => {
+    button.addEventListener('click', () => {
+      exportPdfForModel();
     });
   });
 
@@ -1291,7 +1304,11 @@ function createHierarchyDetails(node, depth = 0, hierarchyLabel = '') {
         <span class="toggle-icon" aria-hidden="true"></span>
       </div>
     </div>
-    <button type="button" class="detail-button">Ver detalles</button>
+    <button type="button" class="detail-button" aria-label="Ver detalles" title="Ver detalles">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 9a3 3 0 1 1-2.12 5.12A3 3 0 0 1 12 9zm0-5c5 0 9.27 3.11 11 7.5C21.27 15.89 17 19 12 19S2.73 15.89 1 11.5C2.73 7.11 7 4 12 4zm0 2c-3.69 0-6.86 2.16-8.3 5.5C5.14 14.84 8.31 17 12 17s6.86-2.16 8.3-5.5C18.86 8.16 15.69 6 12 6z" />
+      </svg>
+    </button>
   `;
 
   const detailButton = summary.querySelector('button');
@@ -2703,9 +2720,6 @@ if (languageModalCloseEl) {
   languageModalCloseEl.addEventListener('click', closeLanguageModal);
 }
 openCreateModalButton.addEventListener('click', openCreateModal);
-if (exportPdfButton) {
-  exportPdfButton.addEventListener('click', exportPdfForModel);
-}
 createModalCloseEl.addEventListener('click', closeCreateModal);
 createPosicionSearchEl.addEventListener('click', openPositionModal);
 positionModalCloseEl.addEventListener('click', closePositionModal);

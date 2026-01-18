@@ -129,6 +129,22 @@
         cursor: pointer;
       }
 
+      .icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+        min-width: 32px;
+        min-height: 32px;
+        border-radius: 8px;
+      }
+
+      .icon-button svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+      }
+
       button.secondary {
         background: #e6eaf0;
         color: #1f2a37;
@@ -171,6 +187,14 @@
         gap: 8px;
         flex-wrap: wrap;
         align-items: center;
+      }
+
+      .accordion-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        justify-content: flex-end;
       }
 
       .filters {
@@ -492,6 +516,18 @@
       .detail-button {
         background: #2f4a6d;
         color: #ffffff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+        min-width: 32px;
+        min-height: 32px;
+      }
+
+      .detail-button svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
       }
 
       .child-list {
@@ -847,7 +883,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.31.0</p>
+            <p class="version-text"><strong>Versión:</strong> v0.32.0</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -879,32 +915,46 @@
             <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
             <div class="results-actions">
               <div id="language-switcher" class="language-switcher" hidden></div>
-              <button id="export-pdf" type="button" class="secondary" data-auth-required="true">
-                Exportar PDF
-              </button>
               <button id="open-create-modal" type="button">Crear elemento</button>
             </div>
           </div>
           <form id="filter-form" class="filters">
             <label>
               Buscar código_serie
-              <input id="filter-codigo-serie" type="search" placeholder="Ej: SER-001" />
+              <input id="filter-codigo-serie" type="search" />
             </label>
             <label>
               Buscar título de serie
-              <input id="filter-titulo-serie" type="search" placeholder="Ej: Gestión" />
+              <input id="filter-titulo-serie" type="search" />
             </label>
             <label>
               Buscar categoría
-              <input id="filter-categoria" type="search" placeholder="Ej: Documentación" />
+              <input id="filter-categoria" type="search" />
             </label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button type="submit">Aplicar filtros</button>
-              <button type="button" id="clear-filters" class="secondary">Limpiar</button>
-              <button type="button" id="expand-all" class="secondary">Desplegar todo</button>
-              <button type="button" id="collapse-all" class="secondary">Contraer todo</button>
+              <button type="submit" class="icon-button" aria-label="Aplicar filtros" title="Aplicar filtros">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .8 1.6L15 13.5V19a1 1 0 0 1-1.447.894l-3-1.5A1 1 0 0 1 10 17.5v-4L3.2 6.6A1 1 0 0 1 3 5z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                id="clear-filters"
+                class="secondary icon-button"
+                aria-label="Limpiar filtros"
+                title="Limpiar filtros"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 5a1 1 0 0 1 1-1h16a1 1 0 0 1 .8 1.6L15 13.5v3.086l-2 2V13.5L3.2 6.6A1 1 0 0 1 3 5z" />
+                  <path d="M6.5 6.5l11 11a1 1 0 0 1-1.414 1.414l-11-11A1 1 0 0 1 6.5 6.5z" />
+                </svg>
+              </button>
             </div>
           </form>
+          <div class="accordion-actions">
+            <button type="button" id="expand-all" class="secondary">Desplegar todo</button>
+            <button type="button" id="collapse-all" class="secondary">Contraer todo</button>
+          </div>
           <div id="results"></div>
         </section>
       </main>
@@ -916,11 +966,13 @@
             <button id="back-to-cuadros" class="secondary" type="button">
               Volver a gestión de cuadros
             </button>
-            <button id="activities-expand-all" class="secondary" type="button">Desplegar todo</button>
-            <button id="activities-collapse-all" class="secondary" type="button">Contraer todo</button>
           </div>
         </div>
         <div id="activities-message" class="muted"></div>
+        <div class="accordion-actions">
+          <button id="activities-expand-all" class="secondary" type="button">Desplegar todo</button>
+          <button id="activities-collapse-all" class="secondary" type="button">Contraer todo</button>
+        </div>
         <form id="activity-create-form" class="activities-form">
           <label>
             Código de actividad
@@ -1058,7 +1110,7 @@
         <div class="form-grid">
           <label>
             Buscar código de serie
-            <input id="position-search" type="search" placeholder="Ej: SER-001" />
+            <input id="position-search" type="search" />
           </label>
         </div>
         <div id="position-list" class="modal-grid"></div>
