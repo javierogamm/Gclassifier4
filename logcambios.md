@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.27.0
+
+- La exportación CSV de `series_vinculacion` ahora solo incluye filas cuyo `cod` coincide con las series visibles del modelo seleccionado.
+- Se eliminó la necesidad de filtrar por `modelo` en la exportación de `series_vinculacion`, tratándola como tabla auxiliar.
+- Se actualizó la versión visible de la app.
+
 ## v0.26.0
 
 - Se añadió la exportación CSV UTF-8 de la versión e idioma activos para las tablas `series_carga` y `series_vinculacion`.
