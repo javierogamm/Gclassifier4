@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.36.0
+
+- El selector de nivel superior ahora abre un modal con el cuadro cargado en modo acordeón simplificado para elegir la serie padre.
+- El campo de posición en detalle permite cambiar el nivel superior desde el modal y evita seleccionar la misma serie.
+- La selección de actividad en detalles mantiene el autocompletado y elimina la lupita.
+- Se actualizó la versión visible de la app.
+
 ## v0.35.0
 
 - Se reemplazó el script público `/api/env.js` por un endpoint `/api/config` para obtener la configuración sin exponer el archivo en el inspector.
