@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.35.0
+
+- Se reemplazó el script público `/api/env.js` por un endpoint `/api/config` para obtener la configuración sin exponer el archivo en el inspector.
+- La app ahora solicita la configuración por fetch antes de inicializar Supabase.
+- Se actualizó la versión visible de la app.
+
 ## v0.34.0
 
 - El detalle de serie ahora permite buscar y seleccionar actividades con una lupita, además de autocompletar con la tabla de actividades.
