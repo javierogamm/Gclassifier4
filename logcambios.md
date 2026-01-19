@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.39.0
+
+- El registro de descargas ahora se ejecuta al pulsar Exportar CSV o Exportar PDF, guardando modelo, usuario y tipo de botón.
+- Se actualizó la versión visible de la app.
+
 ## v0.38.0
 
 - Se añadió la tabla `downloads` y su policy de inserción para registrar exportaciones.

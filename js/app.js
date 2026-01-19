@@ -929,15 +929,16 @@ async function fetchVinculacionRowsForExport(table, codigoSeries) {
   return { data: null, error };
 }
 
-async function logDownload(type) {
+function resolveDownloadModelValue(modelFilter) {
+  if (!modelFilter) return null;
+  if (modelFilter.isNull) return null;
+  return modelFilter.value ?? modelFilter.label ?? null;
+}
+
+async function logDownload(type, modelFilter = activeModelFilter) {
   if (!supabaseClient || !userIsLoggedIn()) return;
-  const modelValue = activeModelFilter
-    ? activeModelFilter.isNull
-      ? null
-      : activeModelFilter.value ?? activeModelFilter.label ?? null
-    : null;
   const payload = {
-    modelo: modelValue,
+    modelo: resolveDownloadModelValue(modelFilter),
     user: currentUser?.name ?? null,
     type,
   };
@@ -989,6 +990,7 @@ async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
     return;
   }
 
+  await logDownload('CSV', activeModelFilter);
   showMessage('Generando CSV...', false);
 
   const { data: cargaRows, error: cargaError } = await fetchRowsForExport(
@@ -1026,7 +1028,6 @@ async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
 
   triggerCsvDownload(cargaFilename, cargaCsv);
   triggerCsvDownload(vinculacionFilename, vinculacionCsv);
-  await logDownload('CSV');
   showMessage('CSV generados correctamente.', false);
 }
 
@@ -1280,6 +1281,7 @@ async function exportPdfForModel() {
     showMessage('Selecciona un modelo antes de exportar el PDF.', true);
     return;
   }
+  await logDownload('PDF', activeModelFilter);
   const searchFilters = getSearchFilters();
   const visibleRows = filterRowsWithHierarchy(activeRows || [], searchFilters);
   if (!visibleRows.length) {
@@ -1298,7 +1300,6 @@ async function exportPdfForModel() {
     showMessage('El navegador bloqueó la ventana de impresión.', true);
     return;
   }
-  await logDownload('PDF');
 
   const header = buildPdfHeader();
   printWindow.document.open();
