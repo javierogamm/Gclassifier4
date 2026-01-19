@@ -2943,8 +2943,20 @@ async function saveDetailChanges() {
   }
 }
 
-function init() {
-  const env = window.ENV;
+async function fetchEnvConfig() {
+  try {
+    const response = await fetch('/api/config', { cache: 'no-store' });
+    if (!response.ok) {
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    return null;
+  }
+}
+
+async function init() {
+  const env = await fetchEnvConfig();
 
   updateResultsTitle(null, 0);
   loadStoredAuthUser();
@@ -2952,7 +2964,7 @@ function init() {
 
   if (!env) {
     vercelWarningEl.hidden = false;
-    setStatus('warning', 'Sin /api/env.js');
+    setStatus('warning', 'Sin /api/config');
     showMessage('No se encontró configuración de entorno.', true);
     renderCatalog([]);
     return;
