@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.33.3
+
+- El modal de selección de cuadros muestra el mensaje "Selecciona Cuadro de Clasficación".
+- La lista de cuadros del modal se presenta a ancho completo, con el botón de "Gestiona" priorizado y scroll cuando es necesario.
+- Se actualizó la versión visible de la app.
+
 ## v0.33.2
 
 - El filtrado ahora incluye descendientes del elemento coincidente para mantener la jerarquía completa.

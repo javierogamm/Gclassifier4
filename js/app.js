@@ -1766,16 +1766,22 @@ async function openModelModal(table, label) {
     }
   });
 
-  const modelOptions = Array.from(uniqueModels.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }),
-  );
+  const normalizeModelLabel = (label) => String(label || '').trim().toLowerCase();
+  const modelOptions = Array.from(uniqueModels.values()).sort((a, b) => {
+    const aPriority = normalizeModelLabel(a.label) === 'gestiona' ? 0 : 1;
+    const bPriority = normalizeModelLabel(b.label) === 'gestiona' ? 0 : 1;
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+    return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
+  });
 
   if (modelOptions.length === 0) {
     modelModalMessageEl.textContent = 'No se encontraron valores en el campo "modelo".';
     return;
   }
 
-  modelModalMessageEl.textContent = 'Selecciona un modelo para aplicar el filtro:';
+  modelModalMessageEl.textContent = 'Selecciona Cuadro de Clasficación';
   modelOptions.forEach((option) => {
     const button = document.createElement('button');
     button.type = 'button';
