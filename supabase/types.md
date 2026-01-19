@@ -53,3 +53,10 @@ El esquema usa dos tablas principales en el esquema `public`:
 - **original_id** (uuid)
 - **original_categoria** (text)
 - **original_posicion** (text)
+
+## downloads
+
+- **created_at** (timestamptz)
+- **modelo** (text)
+- **user** (text)
+- **type** (text)

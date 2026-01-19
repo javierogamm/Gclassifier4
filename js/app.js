@@ -929,6 +929,24 @@ async function fetchVinculacionRowsForExport(table, codigoSeries) {
   return { data: null, error };
 }
 
+async function logDownload(type) {
+  if (!supabaseClient || !userIsLoggedIn()) return;
+  const modelValue = activeModelFilter
+    ? activeModelFilter.isNull
+      ? null
+      : activeModelFilter.value ?? activeModelFilter.label ?? null
+    : null;
+  const payload = {
+    modelo: modelValue,
+    user: currentUser?.name ?? null,
+    type,
+  };
+  const { error } = await supabaseClient.from('downloads').insert([payload]);
+  if (error) {
+    console.warn('No se pudo registrar la descarga.', error);
+  }
+}
+
 function collectCodigoSerieValues(rows) {
   const codes = new Set();
   (rows || []).forEach((row) => {
@@ -1008,6 +1026,7 @@ async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
 
   triggerCsvDownload(cargaFilename, cargaCsv);
   triggerCsvDownload(vinculacionFilename, vinculacionCsv);
+  await logDownload('CSV');
   showMessage('CSV generados correctamente.', false);
 }
 
@@ -1252,7 +1271,7 @@ function buildPrintableResults(rows) {
   return list;
 }
 
-function exportPdfForModel() {
+async function exportPdfForModel() {
   if (!userIsLoggedIn()) {
     showMessage('Inicia sesión para exportar PDF.', true);
     return;
@@ -1279,6 +1298,7 @@ function exportPdfForModel() {
     showMessage('El navegador bloqueó la ventana de impresión.', true);
     return;
   }
+  await logDownload('PDF');
 
   const header = buildPdfHeader();
   printWindow.document.open();

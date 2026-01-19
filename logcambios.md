@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.38.0
+
+- Se añadió la tabla `downloads` y su policy de inserción para registrar exportaciones.
+- La exportación CSV y PDF registra el modelo filtrado, usuario y tipo de descarga.
+- Se actualizó la versión visible de la app.
+
 ## v0.37.0
 
 - La vinculación ahora filtra por el campo `modelo` en consultas de detalle, series vinculadas y exportación CSV.
