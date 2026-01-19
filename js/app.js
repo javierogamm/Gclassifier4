@@ -112,6 +112,7 @@ let activeRows = [];
 let actividadesRows = [];
 let activityEditContext = null;
 let activityPickerContext = null;
+let positionSelectionContext = null;
 let currentUser = null;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
@@ -1725,53 +1726,206 @@ function setPositionValue(value, label) {
   }
 }
 
-function renderPositionOptions(searchTerm = '') {
-  if (!positionListEl) return;
-  const normalized = normalizeFilterValue(searchTerm);
-  const options = new Map();
-  (activeRows || []).forEach((row) => {
-    const code = getCodigoSerieValue(row);
-    if (!code) return;
-    if (!options.has(code)) {
-      options.set(code, { value: code, label: code });
-    }
-  });
-  const filteredOptions = Array.from(options.values()).filter((option) =>
-    option.label.toLowerCase().includes(normalized),
-  );
-  filteredOptions.sort((a, b) =>
-    a.label.localeCompare(b.label, 'es', { sensitivity: 'base', numeric: true }),
-  );
-  const shouldShowRoot =
-    normalized === '' || 'raíz'.includes(normalized) || 'raiz'.includes(normalized);
-  const rootOption = shouldShowRoot ? [{ value: '', label: 'Raíz' }] : [];
-  const finalOptions = [...rootOption, ...filteredOptions];
-  positionListEl.innerHTML = '';
-  if (finalOptions.length === 0) {
-    positionListEl.innerHTML = '<p class="muted">No hay resultados.</p>';
-    return;
-  }
-  finalOptions.forEach((option) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'secondary';
-    button.textContent = option.label;
-    button.addEventListener('click', () => {
-      setPositionValue(option.value, option.label);
-      closePositionModal();
-    });
-    positionListEl.appendChild(button);
-  });
+function setPositionInputValue(input, value) {
+  if (!input) return;
+  const normalizedValue = value ? String(value).trim() : '';
+  input.value = normalizedValue;
+  input.placeholder = normalizedValue ? '' : 'Raíz';
 }
 
-function openPositionModal() {
+function rowMatchesPositionSearch(row, searchTerm) {
+  const normalized = normalizeFilterValue(searchTerm);
+  if (!normalized) return true;
+  const fields = [
+    row?.codigo_serie,
+    row?.cod,
+    row?.nombre_serie,
+    row?.titulo_serie,
+    row?.nombre_entidad,
+    row?.categoria,
+    row?.actividad,
+  ];
+  return fields.some((field) =>
+    normalizeMatchValue(field).toLowerCase().includes(normalized),
+  );
+}
+
+function filterPositionRowsWithHierarchy(rows, searchTerm) {
+  if (!searchTerm) return rows || [];
+
+  const nodes = (rows || []).map((row, index) => ({
+    identity: getRowIdentity(row, `row-${index + 1}`),
+    row,
+    parent: null,
+    children: [],
+  }));
+
+  const identityMap = new Map();
+  nodes.forEach((node) => {
+    if (!identityMap.has(node.identity)) {
+      identityMap.set(node.identity, node);
+    }
+  });
+
+  nodes.forEach((node) => {
+    const parentIdentity = getParentIdentity(node.row);
+    const parentNode =
+      parentIdentity && identityMap.has(parentIdentity) ? identityMap.get(parentIdentity) : null;
+    if (parentNode && parentNode !== node) {
+      node.parent = parentNode;
+      parentNode.children.push(node);
+    }
+  });
+
+  const includedIdentities = new Set();
+  const includeDescendants = (node) => {
+    includedIdentities.add(node.identity);
+    node.children.forEach((child) => includeDescendants(child));
+  };
+
+  nodes.forEach((node) => {
+    if (!rowMatchesPositionSearch(node.row, searchTerm)) return;
+    let current = node;
+    while (current) {
+      includedIdentities.add(current.identity);
+      current = current.parent;
+    }
+    includeDescendants(node);
+  });
+
+  return (rows || []).filter((row, index) =>
+    includedIdentities.has(getRowIdentity(row, `row-${index + 1}`)),
+  );
+}
+
+function applyPositionSelection(value, label) {
+  if (!positionSelectionContext) return;
+  const { setValue, targetInput } = positionSelectionContext;
+  if (typeof setValue === 'function') {
+    setValue(value, label);
+  } else if (targetInput) {
+    setPositionInputValue(targetInput, value);
+  }
+  closePositionModal();
+}
+
+function createPositionHierarchyDetails(node, depth = 0, excludeCode = null) {
+  const { row } = node;
+  const { codigoSerie, tituloSerie, categoria } = getDisplayValuesForRow(row);
+  const toneClass = getToneForCategoria(categoria, depth);
+  const hasChildren = Boolean(node.children && node.children.length > 0);
+  const selectValue = getCodigoSerieValue(row);
+  const isDisabled =
+    !selectValue || (excludeCode && selectValue === String(excludeCode).trim());
+
+  const details = document.createElement('details');
+  details.className = `result-item position-item ${toneClass}${hasChildren ? ' has-children' : ''}`;
+  details.dataset.depth = depth;
+  const summary = document.createElement('summary');
+  summary.innerHTML = `
+    <div class="result-summary">
+      <div class="result-title">
+        <span class="codigo-serie-badge">${codigoSerie}</span>
+        <span class="result-separator">-</span>
+        <span class="titulo-serie">${tituloSerie}</span>
+        <span class="result-separator">-</span>
+        <span class="categoria-serie">${categoria}</span>
+        ${hasChildren ? '<span class="toggle-icon" aria-hidden="true"></span>' : ''}
+      </div>
+    </div>
+  `;
+
+  const selectButton = document.createElement('button');
+  selectButton.type = 'button';
+  selectButton.className = 'secondary position-select-button';
+  selectButton.textContent = 'Seleccionar';
+  selectButton.disabled = isDisabled;
+  if (isDisabled && excludeCode) {
+    selectButton.title = 'No se puede seleccionar el mismo nivel.';
+  }
+  selectButton.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (selectButton.disabled) return;
+    applyPositionSelection(selectValue, selectValue);
+  });
+  summary.appendChild(selectButton);
+
+  details.appendChild(summary);
+  if (hasChildren) {
+    const body = document.createElement('div');
+    body.className = 'result-body';
+    const childWrapper = document.createElement('div');
+    childWrapper.className = 'child-list';
+    node.children.forEach((childNode) => {
+      childWrapper.appendChild(createPositionHierarchyDetails(childNode, depth + 1, excludeCode));
+    });
+    body.appendChild(childWrapper);
+    details.appendChild(body);
+  }
+
+  return details;
+}
+
+function renderPositionHierarchy(searchTerm = '') {
+  if (!positionListEl) return;
+  positionListEl.innerHTML = '';
+
+  const rootWrapper = document.createElement('div');
+  rootWrapper.className = 'position-root';
+  const rootButton = document.createElement('button');
+  rootButton.type = 'button';
+  rootButton.className = 'secondary position-select-button';
+  rootButton.textContent = 'Raíz';
+  rootButton.addEventListener('click', () => {
+    applyPositionSelection('', 'Raíz');
+  });
+  rootWrapper.appendChild(rootButton);
+  positionListEl.appendChild(rootWrapper);
+
+  if (!activeRows || activeRows.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'No hay datos cargados.';
+    positionListEl.appendChild(empty);
+    return;
+  }
+
+  const filteredRows = filterPositionRowsWithHierarchy(activeRows, searchTerm);
+  const roots = buildHierarchy(filteredRows);
+  if (!roots.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'No hay resultados.';
+    positionListEl.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'position-tree results-list';
+  const excludeCode = positionSelectionContext?.excludeCode ?? null;
+  roots.forEach((node) => {
+    list.appendChild(createPositionHierarchyDetails(node, 0, excludeCode));
+  });
+  positionListEl.appendChild(list);
+
+  if (searchTerm) {
+    list.querySelectorAll('details').forEach((detail) => {
+      detail.open = true;
+    });
+  }
+}
+
+function openPositionModal(context = {}) {
+  positionSelectionContext = context;
   positionSearchEl.value = '';
-  renderPositionOptions('');
+  renderPositionHierarchy('');
   positionModalEl.hidden = false;
 }
 
 function closePositionModal() {
   positionModalEl.hidden = true;
+  positionSelectionContext = null;
 }
 
 async function handleCreateSubmit(event) {
@@ -2004,32 +2158,37 @@ async function openDetailDrawer(row, title) {
     input.type = 'text';
     input.name = key;
     input.value = value === null || value === undefined ? '' : String(value);
-    input.placeholder = '—';
+    input.placeholder = key === 'posicion' ? 'Raíz' : '—';
     if (readOnly || !userCanEdit()) {
       input.readOnly = true;
     }
     input.dataset.original = input.value;
     item.appendChild(labelEl);
-    if (key === 'actividad') {
+    if (key === 'posicion') {
       const fieldWrap = document.createElement('div');
-      fieldWrap.className = 'detail-activity-field';
+      fieldWrap.className = 'detail-position-field';
+      input.readOnly = true;
+      const positionButton = document.createElement('button');
+      positionButton.type = 'button';
+      positionButton.className = 'secondary detail-position-button';
+      positionButton.textContent = 'Cambiar nivel superior';
+      positionButton.disabled = !userCanEdit();
+      positionButton.addEventListener('click', () => {
+        openPositionModal({
+          targetInput: input,
+          excludeCode: codigoSerie,
+          setValue: (value) => setPositionInputValue(input, value),
+        });
+      });
+      fieldWrap.appendChild(input);
+      fieldWrap.appendChild(positionButton);
+      item.appendChild(fieldWrap);
+    } else if (key === 'actividad') {
       input.setAttribute('list', 'activity-options');
       input.addEventListener('blur', () => {
         input.value = trimTrailingSpaces(input.value);
       });
-      const activityButton = document.createElement('button');
-      activityButton.type = 'button';
-      activityButton.className = 'detail-activity-button';
-      activityButton.textContent = '🔍';
-      activityButton.title = 'Buscar actividad';
-      activityButton.disabled = input.readOnly;
-      activityButton.addEventListener('click', async () => {
-        await ensureActivityOptionsLoaded();
-        openActivityPickerModal(input);
-      });
-      fieldWrap.appendChild(input);
-      fieldWrap.appendChild(activityButton);
-      item.appendChild(fieldWrap);
+      item.appendChild(input);
     } else {
       item.appendChild(input);
     }
@@ -3031,10 +3190,15 @@ if (languageModalCloseEl) {
 }
 openCreateModalButton.addEventListener('click', openCreateModal);
 createModalCloseEl.addEventListener('click', closeCreateModal);
-createPosicionSearchEl.addEventListener('click', openPositionModal);
+createPosicionSearchEl.addEventListener('click', () => {
+  openPositionModal({
+    targetInput: createPosicionEl,
+    setValue: setPositionValue,
+  });
+});
 positionModalCloseEl.addEventListener('click', closePositionModal);
 positionSearchEl.addEventListener('input', (event) => {
-  renderPositionOptions(event.target.value);
+  renderPositionHierarchy(event.target.value);
 });
 createFormEl.addEventListener('submit', handleCreateSubmit);
 detailDrawerCloseEl.addEventListener('click', closeDetailDrawer);

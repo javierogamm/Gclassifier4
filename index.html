@@ -603,13 +603,16 @@
         font-size: 14px;
       }
 
-      .detail-activity-field {
+      .detail-activity-field,
+      .detail-position-field {
         display: flex;
         gap: 6px;
         align-items: center;
+        flex-wrap: wrap;
       }
 
-      .detail-activity-field .detail-input {
+      .detail-activity-field .detail-input,
+      .detail-position-field .detail-input {
         flex: 1;
       }
 
@@ -627,6 +630,24 @@
 
       .detail-activity-button:hover {
         background: #e2e8f0;
+      }
+
+      .detail-position-button {
+        white-space: nowrap;
+      }
+
+      .position-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .position-root {
+        display: flex;
+        justify-content: flex-start;
+      }
+
+      .position-select-button {
+        white-space: nowrap;
       }
 
       .activity-picker-search {
@@ -942,7 +963,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.35.0</p>
+            <p class="version-text"><strong>Versión:</strong> v0.36.0</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -1146,7 +1167,7 @@
                 readonly
               />
               <button id="create-posicion-search" class="secondary" type="button">
-                Buscar
+                Cambiar nivel superior
               </button>
             </div>
           </label>
@@ -1168,11 +1189,11 @@
         </div>
         <div class="form-grid">
           <label>
-            Buscar código de serie
+            Buscar código, título o categoría
             <input id="position-search" type="search" />
           </label>
         </div>
-        <div id="position-list" class="modal-grid"></div>
+        <div id="position-list" class="position-list"></div>
       </div>
     </div>
 
