@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.37.0
+
+- La vinculación ahora filtra por el campo `modelo` en consultas de detalle, series vinculadas y exportación CSV.
+- El detalle guarda la actividad vinculada respetando el modelo de la serie seleccionada.
+- Se actualizó la versión visible de la app.
+
 ## v0.36.0
 
 - El selector de nivel superior ahora abre un modal con el cuadro cargado en modo acordeón simplificado para elegir la serie padre.
