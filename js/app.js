@@ -99,6 +99,7 @@ const PLACEHOLDER_PATTERNS = [
   'changeme',
   'example',
 ];
+const NULL_MODEL_TOKEN = '__null_model__';
 
 let supabaseClient = null;
 let activeCatalog = null;
@@ -172,17 +173,54 @@ const SERIES_VINCULACION_EXPORT_FIELDS = [
   { header: 'Plazos', key: 'plazos' },
 ];
 
-async function fetchActividadForCodigoSerie(codigoSerie) {
+function resolveModelFilter(modelValue) {
+  if (modelValue === undefined) {
+    return activeModelFilter ?? null;
+  }
+  if (modelValue === null) {
+    return { value: null, isNull: true };
+  }
+  return { value: modelValue, isNull: false };
+}
+
+function applyModelFilterToQuery(query, modelFilter) {
+  if (!modelFilter) return query;
+  if (modelFilter.isNull) {
+    return query.is('modelo', null);
+  }
+  if (modelFilter.value !== undefined) {
+    return query.eq('modelo', modelFilter.value);
+  }
+  return query;
+}
+
+function parseModelDatasetValue(value) {
+  if (!value) return undefined;
+  if (value === NULL_MODEL_TOKEN) return null;
+  return value;
+}
+
+function buildLinkedSeriesKey(codeValue, modelValue) {
+  const codeKey = normalizeMatchValue(codeValue);
+  const modelKey =
+    modelValue === null || modelValue === undefined ? '__null__' : String(modelValue).trim();
+  return `${codeKey}::${modelKey}`;
+}
+
+async function fetchActividadForCodigoSerie(codigoSerie, modelValue) {
   if (!supabaseClient || !codigoSerie) return null;
   const vinculacionTable = getVinculacionTableForActive();
   if (!vinculacionTable) return null;
   const vinculacionFieldMap = getVinculacionFieldMap();
 
-  const { data, error } = await supabaseClient
+  const modelFilter = resolveModelFilter(modelValue);
+  let query = supabaseClient
     .from(vinculacionTable)
     .select(vinculacionFieldMap.actividad)
     .eq(vinculacionFieldMap.codigoSerie, codigoSerie)
     .limit(1);
+  query = applyModelFilterToQuery(query, modelFilter);
+  const { data, error } = await query;
 
   if (error) {
     return null;
@@ -884,10 +922,9 @@ async function fetchRowsForExport(table, modelFilter, languageFilter) {
 
 async function fetchVinculacionRowsForExport(table, codigoSeries) {
   if (!codigoSeries.length) return { data: [], error: null };
-  const { data, error } = await supabaseClient
-    .from(table)
-    .select('*')
-    .in('cod', codigoSeries);
+  let query = supabaseClient.from(table).select('*').in('cod', codigoSeries);
+  query = applyModelFilterToQuery(query, activeModelFilter);
+  const { data, error } = await query;
   if (!error) return { data, error: null };
   return { data: null, error };
 }
@@ -2137,7 +2174,15 @@ async function openDetailDrawer(row, title) {
   detailDrawerEl.dataset.identityField = identityInfo.field;
   detailDrawerEl.dataset.identityValue = identityInfo.value;
   detailDrawerEl.dataset.originalId = row?.id ?? '';
-  const actividad = await fetchActividadForCodigoSerie(codigoSerie);
+  const resolvedModelValue =
+    row?.modelo !== undefined
+      ? row?.modelo
+      : activeModelFilter?.isNull
+        ? null
+        : activeModelFilter?.value;
+  detailDrawerEl.dataset.modelo =
+    resolvedModelValue === null ? NULL_MODEL_TOKEN : resolvedModelValue ?? '';
+  const actividad = await fetchActividadForCodigoSerie(codigoSerie, resolvedModelValue);
   const fields = [
     { key: 'posicion', label: 'posicion', value: row?.posicion },
     { key: 'codigo_serie', label: 'codigo_serie', value: codigoSerie },
@@ -2778,6 +2823,7 @@ function getLinkedSeriesFieldMap(rows) {
   return {
     codigoSerie: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.codigoSerie, Object.keys(sampleRow), sampleRow),
     nombre: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.nombre, Object.keys(sampleRow), sampleRow),
+    modelo: pickActivityField(LINKED_SERIES_FIELD_CANDIDATES.modelo, Object.keys(sampleRow), sampleRow),
   };
 }
 
@@ -2843,10 +2889,13 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
     return;
   }
   updateLinkedSeriesStatus(statusEl, 'Consultando series vinculadas...', false);
-  const { data, error } = await supabaseClient
+  const modelFilter = resolveModelFilter();
+  let query = supabaseClient
     .from('series_vinculacion')
     .select('*')
     .ilike('actividad', `${actividadMatchValue}%`);
+  query = applyModelFilterToQuery(query, modelFilter);
+  const { data, error } = await query;
   if (error) {
     updateLinkedSeriesStatus(statusEl, mapSupabaseError(error), true);
     renderLinkedSeriesTable([], tableEl);
@@ -2864,6 +2913,7 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
   const codes = new Set();
   matchedRows.forEach((row) => {
     const rawCode = row?.[vinculacionMap.codigoSerie];
+    const modelValue = row?.[vinculacionMap.modelo];
     if (rawCode === null || rawCode === undefined) return;
     const raw = String(rawCode);
     const trimmed = raw.trim();
@@ -2873,34 +2923,38 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
 
   let cargaRows = [];
   if (codes.size) {
-    const { data: cargaData, error: cargaError } = await supabaseClient
+    let cargaQuery = supabaseClient
       .from('series_carga')
       .select('*')
       .in('codigo_serie', Array.from(codes));
+    cargaQuery = applyModelFilterToQuery(cargaQuery, modelFilter);
+    const { data: cargaData, error: cargaError } = await cargaQuery;
     if (!cargaError) {
       cargaRows = cargaData || [];
     }
   }
 
   const cargaMap = getSeriesCargaFieldMap(cargaRows);
-  const cargaByCode = new Map();
+  const cargaByKey = new Map();
   cargaRows.forEach((row) => {
     const key = normalizeMatchValue(row?.[cargaMap.codigoSerie]);
     if (!key) return;
-    cargaByCode.set(key, {
+    const modelValue = row?.[cargaMap.modelo];
+    cargaByKey.set(buildLinkedSeriesKey(key, modelValue), {
       nombre: row?.[cargaMap.nombre],
-      modelo: row?.[cargaMap.modelo],
+      modelo: modelValue,
     });
   });
 
   const mergedRows = matchedRows.map((row) => {
     const codigoRaw = row?.[vinculacionMap.codigoSerie];
     const codigoKey = normalizeMatchValue(codigoRaw);
-    const cargaInfo = codigoKey ? cargaByCode.get(codigoKey) : null;
+    const modelValue = row?.[vinculacionMap.modelo];
+    const cargaInfo = codigoKey ? cargaByKey.get(buildLinkedSeriesKey(codigoKey, modelValue)) : null;
     return {
       codigo: codigoRaw ?? '—',
       nombre: cargaInfo?.nombre ?? '—',
-      modelo: cargaInfo?.modelo ?? '—',
+      modelo: modelValue ?? cargaInfo?.modelo ?? '—',
     };
   });
 
@@ -3046,10 +3100,14 @@ async function saveDetailChanges() {
     }
 
     if (shouldUpdateActividad) {
-      const { error } = await supabaseClient
+      const modelValue = parseModelDatasetValue(detailDrawerEl.dataset.modelo);
+      const modelFilter = resolveModelFilter(modelValue);
+      let vinculacionQuery = supabaseClient
         .from(vinculacionTable)
         .update({ [vinculacionFieldMap.actividad]: actividadUpdate })
         .eq(vinculacionFieldMap.codigoSerie, codigoSerie);
+      vinculacionQuery = applyModelFilterToQuery(vinculacionQuery, modelFilter);
+      const { error } = await vinculacionQuery;
       if (error) {
         throw error;
       }
