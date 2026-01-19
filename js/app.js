@@ -83,6 +83,12 @@ const activityEditFormEl = document.getElementById('activity-edit-form');
 const activityEditFieldsEl = document.getElementById('activity-edit-fields');
 const activityEditSubmitButton = document.getElementById('activity-edit-submit');
 const activityEditStatusEl = document.getElementById('activity-edit-status');
+const activityPickerModalEl = document.getElementById('activity-picker-modal');
+const activityPickerCloseEl = document.getElementById('activity-picker-close');
+const activityPickerSearchEl = document.getElementById('activity-picker-search');
+const activityPickerStatusEl = document.getElementById('activity-picker-status');
+const activityPickerListEl = document.getElementById('activity-picker-list');
+const activityOptionsDatalistEl = document.getElementById('activity-options');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -105,7 +111,10 @@ let pendingLanguageContext = null;
 let activeRows = [];
 let actividadesRows = [];
 let activityEditContext = null;
+let activityPickerContext = null;
 let currentUser = null;
+const activityOptionsCache = new Map();
+let activityPickerOptions = [];
 
 const ACTIVITY_FIELD_CANDIDATES = {
   actividadCode: ['codigo_actividad', 'cod_actividad', 'codigo'],
@@ -118,6 +127,10 @@ const LINKED_SERIES_FIELD_CANDIDATES = {
   codigoSerie: ['codigo_serie', 'cod', 'codigo'],
   nombre: ['nombre', 'titulo_serie', 'nombre_serie', 'nombre_entidad'],
   modelo: ['modelo', 'nombre_entidad', 'modelo_serie'],
+};
+const VINCULACION_FIELD_CANDIDATES = {
+  codigoSerie: ['cod', 'codigo_serie', 'codigo'],
+  actividad: ['actividad'],
 };
 const SERIES_CARGA_FIELD_CANDIDATES = {
   codigoSerie: ['codigo_serie', 'cod', 'codigo'],
@@ -160,26 +173,44 @@ const SERIES_VINCULACION_EXPORT_FIELDS = [
 
 async function fetchActividadForCodigoSerie(codigoSerie) {
   if (!supabaseClient || !codigoSerie) return null;
-  const actividadesTable = getActividadesTableForActive();
-  if (!actividadesTable) return null;
+  const vinculacionTable = getVinculacionTableForActive();
+  if (!vinculacionTable) return null;
+  const vinculacionFieldMap = getVinculacionFieldMap();
 
   const { data, error } = await supabaseClient
-    .from(actividadesTable)
-    .select('actividad')
-    .eq('cod', codigoSerie)
+    .from(vinculacionTable)
+    .select(vinculacionFieldMap.actividad)
+    .eq(vinculacionFieldMap.codigoSerie, codigoSerie)
     .limit(1);
 
   if (error) {
     return null;
   }
 
-  return data?.[0]?.actividad ?? null;
+  return data?.[0]?.[vinculacionFieldMap.actividad] ?? null;
 }
 
 function getActividadesTableForActive() {
   if (!activeCatalog?.entities || !activeTable) return null;
   const entity = activeCatalog.entities.find((item) => item?.carga?.table === activeTable);
   return entity?.actividades?.table ?? null;
+}
+
+function getVinculacionTableForActive() {
+  if (!activeCatalog?.entities || !activeTable) return null;
+  const entity = activeCatalog.entities.find((item) => item?.carga?.table === activeTable);
+  return entity?.vinculacion?.table ?? null;
+}
+
+function getVinculacionFieldMap() {
+  const entity = activeCatalog?.entities?.find((item) => item?.carga?.table === activeTable);
+  const fields = entity?.vinculacion?.fields ?? [];
+  const sampleRow = {};
+  const baseFields = fields.length ? fields : Object.keys(sampleRow);
+  return {
+    codigoSerie: pickActivityField(VINCULACION_FIELD_CANDIDATES.codigoSerie, baseFields, sampleRow),
+    actividad: pickActivityField(VINCULACION_FIELD_CANDIDATES.actividad, baseFields, sampleRow),
+  };
 }
 
 function setStatus(state, text) {
@@ -543,6 +574,10 @@ function normalizeMatchValue(value) {
   return String(value).trim();
 }
 
+function trimTrailingSpaces(value) {
+  return String(value ?? '').replace(/\s+$/u, '');
+}
+
 function areMatchValues(a, b) {
   return normalizeMatchValue(a) === normalizeMatchValue(b);
 }
@@ -551,6 +586,135 @@ function updateDetailStatus(message, isError = false) {
   if (!detailDrawerStatusEl) return;
   detailDrawerStatusEl.textContent = message || '';
   detailDrawerStatusEl.className = isError ? 'error' : 'muted';
+}
+
+function updateActivityPickerStatus(message, isError = false) {
+  if (!activityPickerStatusEl) return;
+  activityPickerStatusEl.textContent = message || '';
+  activityPickerStatusEl.className = isError ? 'error' : 'muted';
+}
+
+function buildActivityOptionsFromRows(rows) {
+  const entity = activeCatalog?.entities?.find((item) => item?.carga?.table === activeTable);
+  const fields = entity?.actividades?.fields ?? [];
+  const sampleRow = rows?.[0] || {};
+  const baseFields = fields.length ? fields : Object.keys(sampleRow);
+  const fieldMap = getActivityFieldMapFromData(baseFields, sampleRow);
+
+  return (rows || [])
+    .map((row) => {
+      const name = trimTrailingSpaces(row?.[fieldMap.actividadName] ?? '');
+      const code = trimTrailingSpaces(row?.[fieldMap.actividadCode] ?? '');
+      return {
+        name,
+        code,
+      };
+    })
+    .filter((option) => option.name || option.code)
+    .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+}
+
+function setActivityOptionsDatalist(options) {
+  if (!activityOptionsDatalistEl) return;
+  activityOptionsDatalistEl.innerHTML = '';
+  options.forEach((option) => {
+    const optionEl = document.createElement('option');
+    optionEl.value = option.name;
+    if (option.code) {
+      optionEl.label = `${option.code} — ${option.name}`;
+    }
+    activityOptionsDatalistEl.appendChild(optionEl);
+  });
+}
+
+function renderActivityPickerList(filterValue = '') {
+  if (!activityPickerListEl) return;
+  const normalizedFilter = String(filterValue ?? '').trim().toLowerCase();
+  activityPickerListEl.innerHTML = '';
+  const filtered = activityPickerOptions.filter((option) => {
+    if (!normalizedFilter) return true;
+    return (
+      option.name.toLowerCase().includes(normalizedFilter) ||
+      option.code.toLowerCase().includes(normalizedFilter)
+    );
+  });
+  if (!filtered.length) {
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = 'No se encontraron actividades.';
+    activityPickerListEl.appendChild(empty);
+    return;
+  }
+
+  filtered.forEach((option) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'secondary activity-picker-item';
+    const nameEl = document.createElement('strong');
+    nameEl.textContent = option.name || '—';
+    const codeEl = document.createElement('span');
+    codeEl.textContent = option.code ? `Código: ${option.code}` : 'Sin código';
+    button.appendChild(nameEl);
+    button.appendChild(codeEl);
+    button.addEventListener('click', () => {
+      if (activityPickerContext?.inputEl) {
+        activityPickerContext.inputEl.value = trimTrailingSpaces(option.name || option.code);
+      }
+      closeActivityPickerModal();
+    });
+    activityPickerListEl.appendChild(button);
+  });
+}
+
+async function ensureActivityOptionsLoaded() {
+  const table = getActividadesTableForActive();
+  if (!table || !supabaseClient) {
+    activityPickerOptions = [];
+    if (!table) {
+      updateActivityPickerStatus('No hay tabla de actividades configurada.', true);
+    } else {
+      updateActivityPickerStatus('Configura Supabase antes de consultar actividades.', true);
+    }
+    setActivityOptionsDatalist([]);
+    return;
+  }
+  if (activityOptionsCache.has(table)) {
+    activityPickerOptions = activityOptionsCache.get(table);
+    setActivityOptionsDatalist(activityPickerOptions);
+    return;
+  }
+
+  updateActivityPickerStatus('Cargando actividades...', false);
+  const { data, error } = await supabaseClient.from(table).select('*');
+  if (error) {
+    updateActivityPickerStatus(mapSupabaseError(error), true);
+    activityPickerOptions = [];
+    setActivityOptionsDatalist([]);
+    return;
+  }
+
+  const options = buildActivityOptionsFromRows(data || []);
+
+  activityOptionsCache.set(table, options);
+  activityPickerOptions = options;
+  updateActivityPickerStatus(`Actividades disponibles: ${options.length}`, false);
+  setActivityOptionsDatalist(options);
+}
+
+function openActivityPickerModal(inputEl) {
+  if (!activityPickerModalEl) return;
+  activityPickerContext = { inputEl };
+  activityPickerModalEl.hidden = false;
+  if (activityPickerSearchEl) {
+    activityPickerSearchEl.value = '';
+  }
+  renderActivityPickerList('');
+}
+
+function closeActivityPickerModal() {
+  if (!activityPickerModalEl) return;
+  activityPickerModalEl.hidden = true;
+  activityPickerContext = null;
 }
 
 function updateHistoryStatus(message, isError = false) {
@@ -1846,10 +2010,33 @@ async function openDetailDrawer(row, title) {
     }
     input.dataset.original = input.value;
     item.appendChild(labelEl);
-    item.appendChild(input);
+    if (key === 'actividad') {
+      const fieldWrap = document.createElement('div');
+      fieldWrap.className = 'detail-activity-field';
+      input.setAttribute('list', 'activity-options');
+      input.addEventListener('blur', () => {
+        input.value = trimTrailingSpaces(input.value);
+      });
+      const activityButton = document.createElement('button');
+      activityButton.type = 'button';
+      activityButton.className = 'detail-activity-button';
+      activityButton.textContent = '🔍';
+      activityButton.title = 'Buscar actividad';
+      activityButton.disabled = input.readOnly;
+      activityButton.addEventListener('click', async () => {
+        await ensureActivityOptionsLoaded();
+        openActivityPickerModal(input);
+      });
+      fieldWrap.appendChild(input);
+      fieldWrap.appendChild(activityButton);
+      item.appendChild(fieldWrap);
+    } else {
+      item.appendChild(input);
+    }
     detailDrawerBodyEl.appendChild(item);
   });
 
+  await ensureActivityOptionsLoaded();
   detailDrawerEl.hidden = false;
 }
 
@@ -2089,6 +2276,12 @@ async function loadActividades(table) {
     return;
   }
   actividadesRows = data || [];
+  const options = buildActivityOptionsFromRows(actividadesRows);
+  activityOptionsCache.set(table, options);
+  if (table === getActividadesTableForActive()) {
+    activityPickerOptions = options;
+    setActivityOptionsDatalist(options);
+  }
   renderActividadesView();
   showActivitiesMessage(`Actividades cargadas: ${actividadesRows.length}`, false);
 }
@@ -2101,11 +2294,7 @@ function pickActivityField(candidates, fields, row) {
   );
 }
 
-function getActivityFieldMap() {
-  const entity = activeCatalog?.entities?.find((item) => item?.carga?.table === activeTable);
-  const fields = entity?.actividades?.fields ?? [];
-  const sampleRow = actividadesRows[0] || {};
-
+function getActivityFieldMapFromData(fields, sampleRow) {
   return {
     actividadCode: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadCode, fields, sampleRow),
     actividadName: pickActivityField(ACTIVITY_FIELD_CANDIDATES.actividadName, fields, sampleRow),
@@ -2115,6 +2304,15 @@ function getActivityFieldMap() {
       sampleRow,
     ),
   };
+}
+
+function getActivityFieldMap() {
+  const entity = activeCatalog?.entities?.find((item) => item?.carga?.table === activeTable);
+  const fields = entity?.actividades?.fields ?? [];
+  const sampleRow = actividadesRows[0] || {};
+  const baseFields = fields.length ? fields : Object.keys(sampleRow);
+
+  return getActivityFieldMapFromData(baseFields, sampleRow);
 }
 
 function renderActividadesView() {
@@ -2649,9 +2847,10 @@ async function saveDetailChanges() {
   });
 
   const hasMainUpdates = Object.keys(updates).length > 0;
-  const actividadesTable = getActividadesTableForActive();
+  const vinculacionTable = getVinculacionTableForActive();
+  const vinculacionFieldMap = getVinculacionFieldMap();
   const codigoSerie = detailDrawerEl.dataset.codigoSerie;
-  const shouldUpdateActividad = actividadChanged && actividadesTable && codigoSerie;
+  const shouldUpdateActividad = actividadChanged && vinculacionTable && codigoSerie;
   const originalId = detailDrawerEl.dataset.originalId || null;
   const shouldLogHistory = activeTable === 'series_carga' && hasMainUpdates;
 
@@ -2689,9 +2888,9 @@ async function saveDetailChanges() {
 
     if (shouldUpdateActividad) {
       const { error } = await supabaseClient
-        .from(actividadesTable)
-        .update({ actividad: actividadUpdate })
-        .eq('cod', codigoSerie);
+        .from(vinculacionTable)
+        .update({ [vinculacionFieldMap.actividad]: actividadUpdate })
+        .eq(vinculacionFieldMap.codigoSerie, codigoSerie);
       if (error) {
         throw error;
       }
@@ -2869,6 +3068,21 @@ if (activityEditModalEl) {
     }
   });
 }
+if (activityPickerCloseEl) {
+  activityPickerCloseEl.addEventListener('click', closeActivityPickerModal);
+}
+if (activityPickerSearchEl) {
+  activityPickerSearchEl.addEventListener('input', (event) => {
+    renderActivityPickerList(event.target.value);
+  });
+}
+if (activityPickerModalEl) {
+  activityPickerModalEl.addEventListener('click', (event) => {
+    if (event.target === activityPickerModalEl) {
+      closeActivityPickerModal();
+    }
+  });
+}
 if (loginModalEl) {
   loginModalEl.addEventListener('click', (event) => {
     if (event.target === loginModalEl) {
@@ -2927,6 +3141,9 @@ window.addEventListener('keydown', (event) => {
     }
     if (activityEditModalEl && !activityEditModalEl.hidden) {
       closeActivityEditModal();
+    }
+    if (activityPickerModalEl && !activityPickerModalEl.hidden) {
+      closeActivityPickerModal();
     }
     if (loginModalEl && !loginModalEl.hidden) {
       closeLoginModal();

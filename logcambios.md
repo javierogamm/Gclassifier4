@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.34.0
+
+- El detalle de serie ahora permite buscar y seleccionar actividades con una lupita, además de autocompletar con la tabla de actividades.
+- El campo de actividad limpia espacios finales al asignar o al salir del input.
+- La actividad del detalle se consulta y guarda contra la tabla de series_vinculacion.
+- Se actualizó la versión visible de la app.
+
 ## v0.33.3
 
 - El modal de selección de cuadros muestra el mensaje "Selecciona Cuadro de Clasficación".

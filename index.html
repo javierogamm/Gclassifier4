@@ -603,6 +603,55 @@
         font-size: 14px;
       }
 
+      .detail-activity-field {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .detail-activity-field .detail-input {
+        flex: 1;
+      }
+
+      .detail-activity-button {
+        border-radius: 6px;
+        border: 1px solid #5b6b84;
+        background: #f8fafc;
+        color: #2f4a6d;
+        padding: 6px 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .detail-activity-button:hover {
+        background: #e2e8f0;
+      }
+
+      .activity-picker-search {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid #cbd5f5;
+      }
+
+      .activity-picker-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .activity-picker-item {
+        display: grid;
+        gap: 2px;
+        text-align: left;
+      }
+
+      .activity-picker-item span {
+        font-size: 13px;
+        color: #475569;
+      }
+
       .drawer-actions {
         display: flex;
         flex-wrap: wrap;
@@ -894,7 +943,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.33.3</p>
+            <p class="version-text"><strong>Versión:</strong> v0.34.0</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -1135,6 +1184,7 @@
           <button id="detail-drawer-close" class="secondary" type="button">Cerrar</button>
         </div>
         <div id="detail-drawer-body" class="detail-grid"></div>
+        <datalist id="activity-options"></datalist>
         <div class="drawer-actions">
           <div id="detail-drawer-status" class="muted"></div>
           <div class="drawer-buttons">
@@ -1153,6 +1203,25 @@
         </div>
         <div id="history-status" class="muted"></div>
         <div id="history-list" class="history-list"></div>
+      </div>
+    </div>
+
+    <div id="activity-picker-modal" class="modal" hidden>
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="activity-picker-title">
+        <div class="modal-header">
+          <h3 id="activity-picker-title">Selecciona una actividad</h3>
+          <button id="activity-picker-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <div class="form-grid">
+          <input
+            id="activity-picker-search"
+            class="activity-picker-search"
+            type="search"
+            placeholder="Buscar actividad"
+          />
+          <div id="activity-picker-status" class="muted"></div>
+          <div id="activity-picker-list" class="activity-picker-list"></div>
+        </div>
       </div>
     </div>
 
