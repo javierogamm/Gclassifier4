@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.40.0
+
+- Se añadió el botón "Exportar todo" visible solo para administradores, que genera un ZIP con los CSV de carga y vinculación de todos los modelos disponibles.
+- Se actualizó la versión visible de la app.
+
 ## v0.39.0
 
 - El registro de descargas ahora se ejecuta al pulsar Exportar CSV o Exportar PDF, guardando modelo, usuario y tipo de botón.
