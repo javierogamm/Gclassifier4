@@ -18,6 +18,7 @@ const registerSubmitEl = document.getElementById('register-submit');
 const loginStatusEl = document.getElementById('login-status');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
+const exportAllButton = document.getElementById('export-all');
 const resultsEl = document.getElementById('results');
 const vercelWarningEl = document.getElementById('vercel-warning');
 const modelModalEl = document.getElementById('model-modal');
@@ -319,6 +320,10 @@ function userIsLoggedIn() {
 function applyAccessControl() {
   const canEdit = userCanEdit();
   const isLoggedIn = userIsLoggedIn();
+  if (exportAllButton) {
+    exportAllButton.hidden = !canEdit;
+    exportAllButton.disabled = !canEdit;
+  }
   if (openCreateModalButton) {
     openCreateModalButton.disabled = !canEdit;
   }
@@ -911,6 +916,17 @@ function triggerCsvDownload(filename, csvContent) {
   URL.revokeObjectURL(url);
 }
 
+function triggerZipDownload(filename, zipBlob) {
+  const url = URL.createObjectURL(zipBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 async function fetchRowsForExport(table, modelFilter, languageFilter) {
   const { data, error } = await fetchAllRows(table, modelFilter, languageFilter);
   if (!error) return { data, error: null };
@@ -920,10 +936,10 @@ async function fetchRowsForExport(table, modelFilter, languageFilter) {
   return { data: null, error };
 }
 
-async function fetchVinculacionRowsForExport(table, codigoSeries) {
+async function fetchVinculacionRowsForExport(table, codigoSeries, modelFilter = activeModelFilter) {
   if (!codigoSeries.length) return { data: [], error: null };
   let query = supabaseClient.from(table).select('*').in('cod', codigoSeries);
-  query = applyModelFilterToQuery(query, activeModelFilter);
+  query = applyModelFilterToQuery(query, modelFilter);
   const { data, error } = await query;
   if (!error) return { data, error: null };
   return { data: null, error };
@@ -959,6 +975,61 @@ function collectCodigoSerieValues(rows) {
     if (raw && raw !== trimmed) codes.add(raw);
   });
   return Array.from(codes);
+}
+
+function buildModelOptions(allModels) {
+  const uniqueModels = new Map();
+  allModels.forEach((row) => {
+    const rawValue = row?.modelo;
+    if (rawValue === null || rawValue === undefined || rawValue === '') {
+      if (!uniqueModels.has('__empty__')) {
+        uniqueModels.set('__empty__', { label: '(sin modelo)', value: null, isNull: true });
+      }
+      return;
+    }
+    const key = String(rawValue);
+    if (!uniqueModels.has(key)) {
+      uniqueModels.set(key, { label: key, value: rawValue, isNull: false });
+    }
+  });
+
+  const normalizeModelLabel = (label) => String(label || '').trim().toLowerCase();
+  return Array.from(uniqueModels.values()).sort((a, b) => {
+    const aPriority = normalizeModelLabel(a.label) === 'gestiona' ? 0 : 1;
+    const bPriority = normalizeModelLabel(b.label) === 'gestiona' ? 0 : 1;
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+    return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
+  });
+}
+
+async function fetchModelOptions(table) {
+  const batchSize = 1000;
+  let from = 0;
+  const allModels = [];
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabaseClient
+      .from(table)
+      .select('modelo')
+      .range(from, from + batchSize - 1);
+
+    if (error) {
+      return { options: [], error };
+    }
+
+    const batch = data || [];
+    allModels.push(...batch);
+    if (batch.length < batchSize) {
+      hasMore = false;
+    } else {
+      from += batchSize;
+    }
+  }
+
+  return { options: buildModelOptions(allModels), error: null };
 }
 
 async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
@@ -1009,6 +1080,7 @@ async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
   const { data: vinculacionRows, error: vinculacionError } = await fetchVinculacionRowsForExport(
     vinculacionTable,
     codigoSeries,
+    activeModelFilter,
   );
   if (vinculacionError) {
     showMessage(mapSupabaseError(vinculacionError), true);
@@ -1029,6 +1101,113 @@ async function exportCsvForModel({ cargaTable, vinculacionTable, label }) {
   triggerCsvDownload(cargaFilename, cargaCsv);
   triggerCsvDownload(vinculacionFilename, vinculacionCsv);
   showMessage('CSV generados correctamente.', false);
+}
+
+async function exportAllCsvAsZip() {
+  if (!userCanEdit()) {
+    showMessage('Solo los administradores pueden exportar todo.', true);
+    return;
+  }
+  if (!userIsLoggedIn()) {
+    showMessage('Inicia sesión para exportar todo.', true);
+    return;
+  }
+  if (!supabaseClient) {
+    showMessage('Configura Supabase antes de exportar.', true);
+    return;
+  }
+  if (!activeCatalog?.entities?.length) {
+    showMessage('No se encontró catálogo para exportar.', true);
+    return;
+  }
+  if (!window.JSZip) {
+    showMessage('No se encontró JSZip para generar el ZIP.', true);
+    return;
+  }
+
+  await logDownload('ZIP', null);
+  showMessage('Generando ZIP con todos los CSV...', false);
+
+  const zip = new window.JSZip();
+  let fileCount = 0;
+  const entities = listEntities(activeCatalog);
+
+  for (const entity of entities) {
+    const cargaTable = entity?.carga?.table;
+    const vinculacionTable = entity?.vinculacion?.table;
+    if (!cargaTable || !vinculacionTable) continue;
+
+    const { options: modelOptions, error: modelError } = await fetchModelOptions(cargaTable);
+    if (modelError) {
+      showMessage(mapSupabaseError(modelError), true);
+      return;
+    }
+    if (modelOptions.length === 0) {
+      continue;
+    }
+
+    for (const modelOption of modelOptions) {
+      const { options: languageOptions, error: languageError } = await fetchLanguageOptions(
+        cargaTable,
+        modelOption,
+      );
+      if (languageError) {
+        showMessage(mapSupabaseError(languageError), true);
+        return;
+      }
+      const languages = languageOptions.length > 0 ? languageOptions : [null];
+
+      for (const languageOption of languages) {
+        const { data: cargaRows, error: cargaError } = await fetchRowsForExport(
+          cargaTable,
+          modelOption,
+          languageOption,
+        );
+        if (cargaError) {
+          showMessage(mapSupabaseError(cargaError), true);
+          return;
+        }
+
+        const codigoSeries = collectCodigoSerieValues(cargaRows || []);
+        const { data: vinculacionRows, error: vinculacionError } =
+          await fetchVinculacionRowsForExport(vinculacionTable, codigoSeries, modelOption);
+        if (vinculacionError) {
+          showMessage(mapSupabaseError(vinculacionError), true);
+          return;
+        }
+
+        const modelLabel =
+          modelOption?.label ?? (modelOption?.isNull ? '(sin modelo)' : modelOption?.value);
+        const modelSegment = buildFileSegment(modelLabel, 'MODELO');
+        const languageSegment = languageOption
+          ? `_${buildFileSegment(languageOption.label, 'IDIOMA')}`
+          : '';
+
+        const cargaFilename = `${modelSegment}${languageSegment}_CARGA.csv`;
+        const vinculacionFilename = `${modelSegment}${languageSegment}_VINCULACION.csv`;
+
+        const cargaCsv = buildCsvContent(cargaRows || [], SERIES_CARGA_EXPORT_FIELDS);
+        const vinculacionCsv = buildCsvContent(
+          vinculacionRows || [],
+          SERIES_VINCULACION_EXPORT_FIELDS,
+        );
+
+        zip.file(cargaFilename, cargaCsv);
+        zip.file(vinculacionFilename, vinculacionCsv);
+        fileCount += 2;
+      }
+    }
+  }
+
+  if (!fileCount) {
+    showMessage('No se encontraron datos para exportar.', true);
+    return;
+  }
+
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const stamp = new Date().toISOString().slice(0, 10);
+  triggerZipDownload(`EXPORTACION_CSV_${stamp}.zip`, zipBlob);
+  showMessage('ZIP generado correctamente.', false);
 }
 
 function isMissingColumnError(error, columnName) {
@@ -2102,55 +2281,11 @@ async function openModelModal(table, label) {
   modelListEl.innerHTML = '';
   modelModalEl.hidden = false;
 
-  let from = 0;
-  const batchSize = 1000;
-  const allModels = [];
-  let hasMore = true;
-
-  while (hasMore) {
-    const { data, error } = await supabaseClient
-      .from(table)
-      .select('modelo')
-      .range(from, from + batchSize - 1);
-
-    if (error) {
-      modelModalMessageEl.textContent = mapSupabaseError(error);
-      return;
-    }
-
-    const batch = data || [];
-    allModels.push(...batch);
-    if (batch.length < batchSize) {
-      hasMore = false;
-    } else {
-      from += batchSize;
-    }
+  const { options: modelOptions, error } = await fetchModelOptions(table);
+  if (error) {
+    modelModalMessageEl.textContent = mapSupabaseError(error);
+    return;
   }
-
-  const uniqueModels = new Map();
-  allModels.forEach((row) => {
-    const rawValue = row?.modelo;
-    if (rawValue === null || rawValue === undefined || rawValue === '') {
-      if (!uniqueModels.has('__empty__')) {
-        uniqueModels.set('__empty__', { label: '(sin modelo)', value: null, isNull: true });
-      }
-      return;
-    }
-    const key = String(rawValue);
-    if (!uniqueModels.has(key)) {
-      uniqueModels.set(key, { label: key, value: rawValue, isNull: false });
-    }
-  });
-
-  const normalizeModelLabel = (label) => String(label || '').trim().toLowerCase();
-  const modelOptions = Array.from(uniqueModels.values()).sort((a, b) => {
-    const aPriority = normalizeModelLabel(a.label) === 'gestiona' ? 0 : 1;
-    const bPriority = normalizeModelLabel(b.label) === 'gestiona' ? 0 : 1;
-    if (aPriority !== bPriority) {
-      return aPriority - bPriority;
-    }
-    return a.label.localeCompare(b.label, 'es', { sensitivity: 'base' });
-  });
 
   if (modelOptions.length === 0) {
     modelModalMessageEl.textContent = 'No se encontraron valores en el campo "modelo".';
@@ -3247,6 +3382,9 @@ if (logoutButton) {
   logoutButton.addEventListener('click', () => {
     setAuthUser(null);
   });
+}
+if (exportAllButton) {
+  exportAllButton.addEventListener('click', exportAllCsvAsZip);
 }
 if (loginModalCloseEl) {
   loginModalCloseEl.addEventListener('click', closeLoginModal);
