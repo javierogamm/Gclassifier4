@@ -26,6 +26,15 @@ const modelModalTitleEl = document.getElementById('model-modal-title');
 const modelModalMessageEl = document.getElementById('model-modal-message');
 const modelModalCloseEl = document.getElementById('model-modal-close');
 const modelListEl = document.getElementById('model-list');
+const modelWizardButton = document.getElementById('model-wizard-button');
+const modelWizardModalEl = document.getElementById('model-wizard-modal');
+const modelWizardCloseEl = document.getElementById('model-wizard-close');
+const modelWizardQuestionEl = document.getElementById('model-wizard-question');
+const modelWizardOptionsEl = document.getElementById('model-wizard-options');
+const modelWizardResultEl = document.getElementById('model-wizard-result');
+const modelWizardStatusEl = document.getElementById('model-wizard-status');
+const modelWizardBackEl = document.getElementById('model-wizard-back');
+const modelWizardConfirmEl = document.getElementById('model-wizard-confirm');
 const languageSwitcherEl = document.getElementById('language-switcher');
 const languageModalEl = document.getElementById('language-modal');
 const languageModalTitleEl = document.getElementById('language-modal-title');
@@ -101,6 +110,199 @@ const PLACEHOLDER_PATTERNS = [
   'example',
 ];
 const NULL_MODEL_TOKEN = '__null_model__';
+const MODEL_WIZARD_TREE = {
+  pregunta: 'Tipo de entidad',
+  opciones: {
+    Ayuntamiento: {
+      pregunta: 'Provincia',
+      opciones: {
+        'Barcelona o Lleida': {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Sí: {
+              outputs: ['SETDIBA', 'QdeCAC Hñibrido ESET'],
+            },
+            No: {
+              pregunta: 'Modelo QdeCAC',
+              opciones: {
+                Si: {
+                  pregunta: 'Completo o simplificado ESET',
+                  opciones: {
+                    Completo: {
+                      output: 'QddeCAC',
+                    },
+                    Simplificado: {
+                      output: 'QdeCAC Hñibrido ESET',
+                    },
+                  },
+                },
+                No: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        'Tarragona o Girona': {
+          pregunta: 'Modelo QdeCAC',
+          opciones: {
+            Si: {
+              pregunta: 'Completo o simplificado ESET',
+              opciones: {
+                Completo: {
+                  output: 'QddeCAC',
+                },
+                Simplificado: {
+                  output: 'QdeCAC Hñibrido ESET',
+                },
+              },
+            },
+            No: {
+              output: 'Gestiona',
+            },
+          },
+        },
+        Castellón: {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Si: {
+              output: 'Castellón',
+            },
+            No: {
+              pregunta: 'Usar modelo provincial o modelo gestiona',
+              opciones: {
+                Provincial: {
+                  output: 'Castellón',
+                },
+                Gestiona: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        Pontevedra: {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Si: {
+              output: 'Pontevedra',
+            },
+            No: {
+              pregunta: 'Usar modelo provincial o modelo gestiona',
+              opciones: {
+                Provincial: {
+                  output: 'Pontevedra',
+                },
+                Gestiona: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        Valladolid: {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Si: {
+              output: 'Valladolid',
+            },
+            No: {
+              pregunta: 'Usar modelo provincial o modelo gestiona',
+              opciones: {
+                Provincial: {
+                  output: 'Valladolid',
+                },
+                Gestiona: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        Álava: {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Si: {
+              output: 'Álava',
+            },
+            No: {
+              pregunta: 'Usar modelo provincial o modelo gestiona',
+              opciones: {
+                Provincial: {
+                  output: 'Álava',
+                },
+                Gestiona: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        Teruel: {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Si: {
+              output: 'Teruel',
+            },
+            No: {
+              pregunta: 'Usar modelo provincial o modelo gestiona',
+              opciones: {
+                Provincial: {
+                  output: 'Teruel',
+                },
+                Gestiona: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        Alicante: {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Si: {
+              output: 'Alicante',
+            },
+            No: {
+              pregunta: 'Usar modelo provincial o modelo gestiona',
+              opciones: {
+                Provincial: {
+                  output: 'Alicante',
+                },
+                Gestiona: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        Zaragoza: {
+          output: 'Gestiona',
+        },
+        Burgos: {
+          output: 'Gestiona',
+        },
+        Palencia: {
+          output: 'Gestiona',
+        },
+        Madrid: {
+          pregunta: 'Usar cuadro de la Mesa de archiverosl o modelo gestiona',
+          opciones: {
+            Mesa: {
+              output: 'Madrid Mesa archiveros',
+            },
+            Gestiona: {
+              output: 'Gestiona',
+            },
+          },
+        },
+      },
+    },
+    'Autoridad Portuaria': {
+      output: 'Autoridades portuarias',
+    },
+  },
+};
 
 let supabaseClient = null;
 let activeCatalog = null;
@@ -116,6 +318,9 @@ let activityEditContext = null;
 let activityPickerContext = null;
 let positionSelectionContext = null;
 let currentUser = null;
+let modelWizardNode = MODEL_WIZARD_TREE;
+let modelWizardHistory = [];
+let modelWizardSelection = null;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
 
@@ -385,11 +590,128 @@ function applyAccessControl() {
       button.removeAttribute('title');
     }
   });
+  document.querySelectorAll('[data-auth-visible="true"]').forEach((button) => {
+    button.hidden = !isLoggedIn;
+    button.disabled = !isLoggedIn;
+    if (!isLoggedIn) {
+      button.title = 'Inicia sesión para usar esta opción.';
+    } else {
+      button.removeAttribute('title');
+    }
+  });
   if (!canEdit) {
     closeCreateModal();
     if (activityEditModalEl && !activityEditModalEl.hidden) {
       closeActivityEditModal();
     }
+  }
+}
+
+function getWizardOutputs(node) {
+  if (!node) return [];
+  if (Array.isArray(node.outputs)) return node.outputs;
+  if (node.output) return [node.output];
+  return [];
+}
+
+function resetModelWizard() {
+  modelWizardNode = MODEL_WIZARD_TREE;
+  modelWizardHistory = [];
+  modelWizardSelection = null;
+}
+
+function animateWizardStep(element) {
+  if (!element) return;
+  element.classList.remove('wizard-step');
+  void element.offsetWidth;
+  element.classList.add('wizard-step');
+}
+
+function renderModelWizard() {
+  if (!modelWizardQuestionEl || !modelWizardOptionsEl || !modelWizardResultEl) return;
+  const outputs = getWizardOutputs(modelWizardNode);
+  const hasOutput = outputs.length > 0;
+  const question = modelWizardNode?.pregunta || 'Selecciona una opción';
+
+  if (hasOutput && outputs.length === 1 && !modelWizardSelection) {
+    [modelWizardSelection] = outputs;
+  }
+
+  modelWizardQuestionEl.textContent = hasOutput ? 'Modelo de cuadro sugerido' : question;
+  modelWizardOptionsEl.innerHTML = '';
+  modelWizardResultEl.innerHTML = '';
+  modelWizardResultEl.hidden = !hasOutput;
+  if (modelWizardConfirmEl) {
+    modelWizardConfirmEl.disabled = !hasOutput || !modelWizardSelection;
+    modelWizardConfirmEl.hidden = !hasOutput;
+  }
+
+  if (hasOutput) {
+    const title = document.createElement('p');
+    title.className = 'muted';
+    title.textContent = 'Elige el modelo que deseas visualizar:';
+    modelWizardResultEl.appendChild(title);
+
+    outputs.forEach((output) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `secondary${modelWizardSelection === output ? ' is-selected' : ''}`;
+      button.textContent = `Modelo de cuadro: ${output}`;
+      button.addEventListener('click', () => {
+        modelWizardSelection = output;
+        renderModelWizard();
+      });
+      modelWizardResultEl.appendChild(button);
+    });
+  } else {
+    const options = modelWizardNode?.opciones ? Object.keys(modelWizardNode.opciones) : [];
+    options.forEach((option) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'secondary';
+      button.textContent = option;
+      button.addEventListener('click', () => {
+        const nextNode = modelWizardNode?.opciones?.[option];
+        if (!nextNode) return;
+        modelWizardHistory.push(modelWizardNode);
+        modelWizardNode = nextNode;
+        modelWizardSelection = null;
+        renderModelWizard();
+      });
+      modelWizardOptionsEl.appendChild(button);
+    });
+  }
+
+  if (modelWizardBackEl) {
+    modelWizardBackEl.disabled = modelWizardHistory.length === 0;
+  }
+  if (modelWizardStatusEl) {
+    modelWizardStatusEl.textContent = '';
+  }
+  animateWizardStep(modelWizardOptionsEl);
+  animateWizardStep(modelWizardResultEl);
+}
+
+function openModelWizardModal() {
+  if (!modelWizardModalEl) return;
+  if (!userIsLoggedIn()) {
+    showMessage('Inicia sesión para usar el asistente de modelo.', true);
+    return;
+  }
+  if (!activeTable) {
+    showMessage('Selecciona un cuadro del catálogo antes de usar el asistente.', true);
+    return;
+  }
+  resetModelWizard();
+  renderModelWizard();
+  modelWizardModalEl.hidden = false;
+}
+
+function closeModelWizardModal() {
+  if (!modelWizardModalEl) return;
+  modelWizardModalEl.hidden = true;
+  if (modelWizardStatusEl) {
+    modelWizardStatusEl.textContent = '';
   }
 }
 
@@ -3383,6 +3705,9 @@ async function init() {
 if (loginButton) {
   loginButton.addEventListener('click', openLoginModal);
 }
+if (modelWizardButton) {
+  modelWizardButton.addEventListener('click', openModelWizardModal);
+}
 if (logoutButton) {
   logoutButton.addEventListener('click', () => {
     setAuthUser(null);
@@ -3393,6 +3718,9 @@ if (exportAllButton) {
 }
 if (loginModalCloseEl) {
   loginModalCloseEl.addEventListener('click', closeLoginModal);
+}
+if (modelWizardCloseEl) {
+  modelWizardCloseEl.addEventListener('click', closeModelWizardModal);
 }
 if (loginFormEl) {
   loginFormEl.addEventListener('submit', (event) => {
@@ -3405,6 +3733,35 @@ if (loginSubmitEl) {
 }
 if (registerSubmitEl) {
   registerSubmitEl.addEventListener('click', handleRegister);
+}
+if (modelWizardBackEl) {
+  modelWizardBackEl.addEventListener('click', () => {
+    if (modelWizardHistory.length === 0) return;
+    modelWizardNode = modelWizardHistory.pop();
+    modelWizardSelection = null;
+    renderModelWizard();
+  });
+}
+if (modelWizardConfirmEl) {
+  modelWizardConfirmEl.addEventListener('click', async () => {
+    if (!modelWizardSelection) {
+      if (modelWizardStatusEl) {
+        modelWizardStatusEl.textContent = 'Selecciona un modelo para continuar.';
+      }
+      return;
+    }
+    const selectedModel = modelWizardSelection;
+    closeModelWizardModal();
+    if (!activeTable) {
+      showMessage('Selecciona un cuadro del catálogo antes de aplicar el modelo.', true);
+      return;
+    }
+    await handleModelSelection(activeTable, {
+      label: selectedModel,
+      value: selectedModel,
+      isNull: false,
+    });
+  });
 }
 modelModalCloseEl.addEventListener('click', closeModelModal);
 if (languageModalCloseEl) {
@@ -3505,6 +3862,13 @@ if (historyModalEl) {
     }
   });
 }
+if (modelWizardModalEl) {
+  modelWizardModalEl.addEventListener('click', (event) => {
+    if (event.target === modelWizardModalEl) {
+      closeModelWizardModal();
+    }
+  });
+}
 modelModalEl.addEventListener('click', (event) => {
   if (event.target === modelModalEl) {
     closeModelModal();
@@ -3548,6 +3912,9 @@ window.addEventListener('keydown', (event) => {
     }
     if (languageModalEl && !languageModalEl.hidden) {
       closeLanguageModal();
+    }
+    if (modelWizardModalEl && !modelWizardModalEl.hidden) {
+      closeModelWizardModal();
     }
   }
 });

@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.42.0
+
+- Se añadió el botón “¿Qué cuadro uso?” visible solo para usuarios con sesión iniciada, que abre un asistente con preguntas para recomendar un modelo.
+- El asistente permite navegar paso a paso, volver atrás y confirmar el modelo sugerido para cargarlo en pantalla.
+- Se actualizó la versión visible de la app.
+
 ## v0.41.0
 
 - Las exportaciones CSV ahora se generan en UTF-8 con separador de columnas compatible con Excel.
