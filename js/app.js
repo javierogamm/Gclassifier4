@@ -321,6 +321,7 @@ let currentUser = null;
 let modelWizardNode = MODEL_WIZARD_TREE;
 let modelWizardHistory = [];
 let modelWizardSelection = null;
+let pendingWizardModelSelection = null;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
 
@@ -620,6 +621,14 @@ function resetModelWizard() {
   modelWizardSelection = null;
 }
 
+function buildModelOption(modelValue) {
+  return {
+    label: modelValue,
+    value: modelValue,
+    isNull: false,
+  };
+}
+
 function animateWizardStep(element) {
   if (!element) return;
   element.classList.remove('wizard-step');
@@ -698,10 +707,6 @@ function openModelWizardModal() {
     showMessage('Inicia sesión para usar el asistente de modelo.', true);
     return;
   }
-  if (!activeTable) {
-    showMessage('Selecciona un cuadro del catálogo antes de usar el asistente.', true);
-    return;
-  }
   resetModelWizard();
   renderModelWizard();
   modelWizardModalEl.hidden = false;
@@ -713,6 +718,11 @@ function closeModelWizardModal() {
   if (modelWizardStatusEl) {
     modelWizardStatusEl.textContent = '';
   }
+}
+
+async function applyWizardModelSelection(table, modelValue) {
+  if (!table || !modelValue) return;
+  await handleModelSelection(table, buildModelOption(modelValue));
 }
 
 function openLoginModal() {
@@ -2602,6 +2612,13 @@ async function openModelModal(table, label) {
     return;
   }
 
+  if (pendingWizardModelSelection) {
+    const modelValue = pendingWizardModelSelection;
+    pendingWizardModelSelection = null;
+    await applyWizardModelSelection(table, modelValue);
+    return;
+  }
+
   pendingModelTable = table;
   modelModalTitleEl.textContent = `Selecciona un modelo (${label || table})`;
   modelModalMessageEl.textContent = 'Cargando valores disponibles...';
@@ -3753,14 +3770,11 @@ if (modelWizardConfirmEl) {
     const selectedModel = modelWizardSelection;
     closeModelWizardModal();
     if (!activeTable) {
-      showMessage('Selecciona un cuadro del catálogo antes de aplicar el modelo.', true);
+      pendingWizardModelSelection = selectedModel;
+      showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
       return;
     }
-    await handleModelSelection(activeTable, {
-      label: selectedModel,
-      value: selectedModel,
-      isNull: false,
-    });
+    await applyWizardModelSelection(activeTable, selectedModel);
   });
 }
 modelModalCloseEl.addEventListener('click', closeModelModal);

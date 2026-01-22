@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.42.1
+
+- El asistente "¿Qué cuadro uso?" ahora puede abrirse antes de seleccionar cuadro y aplica el modelo sugerido al elegir un cuadro del catálogo.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.0
 
 - Se añadió el botón “¿Qué cuadro uso?” visible solo para usuarios con sesión iniciada, que abre un asistente con preguntas para recomendar un modelo.
