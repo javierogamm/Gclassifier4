@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.42.5
+
+- Al cerrar el asistente “¿Qué cuadro uso?” se muestra un aviso con flecha para indicar el botón de seleccionar cuadro y aplicar el filtro.
+- El aviso desaparece cuando el cuadro ya se visualiza en el acordeón.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.4
 
 - El asistente aplica el modelo sugerido al confirmar si ya hay un cuadro seleccionado en el catálogo.

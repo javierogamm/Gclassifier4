@@ -18,6 +18,7 @@ const registerSubmitEl = document.getElementById('register-submit');
 const loginStatusEl = document.getElementById('login-status');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
+const wizardSelectionHintEl = document.getElementById('wizard-selection-hint');
 const exportAllButton = document.getElementById('export-all');
 const resultsEl = document.getElementById('results');
 const vercelWarningEl = document.getElementById('vercel-warning');
@@ -522,6 +523,16 @@ function showMessage(message, isError = false) {
   messageEl.className = isError ? 'error' : 'muted';
 }
 
+function showWizardSelectionHint() {
+  if (!wizardSelectionHintEl) return;
+  wizardSelectionHintEl.hidden = false;
+}
+
+function hideWizardSelectionHint() {
+  if (!wizardSelectionHintEl) return;
+  wizardSelectionHintEl.hidden = true;
+}
+
 function updateLoginStatus(message, isError = false) {
   if (!loginStatusEl) return;
   loginStatusEl.textContent = message || '';
@@ -754,6 +765,7 @@ function openModelWizardModal() {
     showMessage('Inicia sesión para usar el asistente de modelo.', true);
     return;
   }
+  hideWizardSelectionHint();
   resetModelWizard();
   renderModelWizard();
   modelWizardModalEl.hidden = false;
@@ -764,6 +776,9 @@ function closeModelWizardModal() {
   modelWizardModalEl.hidden = true;
   if (modelWizardStatusEl) {
     modelWizardStatusEl.textContent = '';
+  }
+  if (!activeTable) {
+    showWizardSelectionHint();
   }
 }
 
@@ -1957,6 +1972,7 @@ async function loadRows(table, modelFilter = null, languageFilter = activeLangua
   updateResultsTitle(modelFilter, filteredRows.length, resolvedLanguageFilter);
   renderLanguageSwitcher(availableLanguages, resolvedLanguageFilter);
   showMessage('', false);
+  hideWizardSelectionHint();
 }
 
 function getRowIdentity(row, fallback) {
@@ -3823,7 +3839,8 @@ if (modelWizardConfirmEl) {
         return;
       }
       pendingWizardModelSelection = selectedModel;
-      showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
+      showMessage('', false);
+      showWizardSelectionHint();
       return;
     }
     await applyWizardModelSelection(activeTable, selectedModel);
