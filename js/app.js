@@ -777,9 +777,7 @@ function closeModelWizardModal() {
   if (modelWizardStatusEl) {
     modelWizardStatusEl.textContent = '';
   }
-  if (!activeTable) {
-    showWizardSelectionHint();
-  }
+  showWizardSelectionHint();
 }
 
 async function applyWizardModelSelection(table, modelValue) {
@@ -1973,7 +1971,6 @@ async function loadRows(table, modelFilter = null, languageFilter = activeLangua
   updateResultsTitle(modelFilter, filteredRows.length, resolvedLanguageFilter);
   renderLanguageSwitcher(availableLanguages, resolvedLanguageFilter);
   showMessage('', false);
-  hideWizardSelectionHint();
 }
 
 function getRowIdentity(row, fallback) {

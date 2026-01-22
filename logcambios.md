@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.42.7
+
+- El aviso solo aparece al cerrar el modal “¿Qué cuadro uso?” y se mantiene visible como guía.
+- El aviso se oculta al pulsar “Seleccionar cuadro”.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.6
 
 - El aviso del asistente ahora solo aparece al cerrar el modal y se muestra encima del botón “Seleccionar cuadro”.
