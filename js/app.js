@@ -2629,11 +2629,20 @@ async function handleCreateSubmit(event) {
   }
 }
 
-function closeModelModal() {
+function closeModelModal(options = {}) {
+  const { applyWizardSelection = false, targetTable = null } = options;
+  const tableForWizard = targetTable || pendingModelTable || lastSelectedTable || activeTable;
+  const wizardSelection = applyWizardSelection ? pendingWizardModelSelection : null;
   modelModalEl.hidden = true;
   pendingModelTable = null;
   modelModalMessageEl.textContent = '';
   modelListEl.innerHTML = '';
+  if (wizardSelection && tableForWizard) {
+    pendingWizardModelSelection = null;
+    window.setTimeout(() => {
+      void applyWizardModelSelection(tableForWizard, wizardSelection);
+    }, 50);
+  }
 }
 
 async function handleModelSelection(table, modelOption) {
@@ -3827,10 +3836,9 @@ if (modelWizardConfirmEl) {
     }
     lastSelectedTable = targetTable;
     if (modelModalEl && !modelModalEl.hidden) {
-      closeModelModal();
-      await new Promise((resolve) => {
-        window.setTimeout(resolve, 50);
-      });
+      pendingWizardModelSelection = selectedModel;
+      closeModelModal({ applyWizardSelection: true, targetTable });
+      return;
     }
     await applyWizardModelSelection(targetTable, selectedModel);
   });

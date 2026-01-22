@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.42.8
+
+- Al cerrar el modal de selección se aplica automáticamente el modelo confirmado por el asistente y se actualiza el acordeón.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.7
 
 - Se fuerza la aplicación del modelo sugerido al confirmar el asistente incluso si el modal de selección está abierto, con un breve retraso para asegurar la recarga.
