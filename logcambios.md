@@ -1,5 +1,15 @@
 # Log de cambios
 
+## v0.42.4
+
+- El asistente aplica el modelo sugerido al confirmar si ya hay un cuadro seleccionado en el catálogo.
+- Se actualizó la versión visible de la app.
+
+## v0.42.3
+
+- Se actualizó el árbol de preguntas/respuestas del asistente con el nuevo diagrama y salidas de modelo.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.2
 
 - Se ajustaron los nombres de modelos sugeridos por el asistente para que coincidan con los registros de base de datos.

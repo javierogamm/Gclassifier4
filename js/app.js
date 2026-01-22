@@ -116,11 +116,11 @@ const MODEL_WIZARD_TREE = {
     Ayuntamiento: {
       pregunta: 'Provincia',
       opciones: {
-        'Barcelona o Lleida': {
+        Lleida: {
           pregunta: 'Forma parte del proyecto provincial',
           opciones: {
             Sí: {
-              outputs: ['SETDIBA', 'QdeCAC Híbrido ESET'],
+              output: 'QdeCAC Híbrido ESET',
             },
             No: {
               pregunta: 'Modelo QdeCAC',
@@ -129,7 +129,7 @@ const MODEL_WIZARD_TREE = {
                   pregunta: 'Completo o simplificado ESET',
                   opciones: {
                     Completo: {
-                      output: 'QddeCAC',
+                      output: 'QdeCAC',
                     },
                     Simplificado: {
                       output: 'QdeCAC Híbrido ESET',
@@ -143,14 +143,60 @@ const MODEL_WIZARD_TREE = {
             },
           },
         },
-        'Tarragona o Girona': {
+        Barcelona: {
+          pregunta: 'Forma parte del proyecto provincial',
+          opciones: {
+            Sí: {
+              output: 'SETDIBA',
+            },
+            No: {
+              pregunta: 'Modelo QdeCAC',
+              opciones: {
+                Si: {
+                  pregunta: 'Completo o simplificado ESET',
+                  opciones: {
+                    Completo: {
+                      output: 'QdeCAC',
+                    },
+                    Simplificado: {
+                      output: 'QdeCAC Híbrido ESET',
+                    },
+                  },
+                },
+                No: {
+                  output: 'Gestiona',
+                },
+              },
+            },
+          },
+        },
+        Tarragona: {
           pregunta: 'Modelo QdeCAC',
           opciones: {
             Si: {
               pregunta: 'Completo o simplificado ESET',
               opciones: {
                 Completo: {
-                  output: 'QddeCAC',
+                  output: 'QdeCAC',
+                },
+                Simplificado: {
+                  output: 'QdeCAC Híbrido ESET',
+                },
+              },
+            },
+            No: {
+              output: 'Gestiona',
+            },
+          },
+        },
+        Girona: {
+          pregunta: 'Modelo QdeCAC',
+          opciones: {
+            Si: {
+              pregunta: 'Completo o simplificado ESET',
+              opciones: {
+                Completo: {
+                  output: 'QdeCAC',
                 },
                 Simplificado: {
                   output: 'QdeCAC Híbrido ESET',
@@ -322,6 +368,7 @@ let modelWizardNode = MODEL_WIZARD_TREE;
 let modelWizardHistory = [];
 let modelWizardSelection = null;
 let pendingWizardModelSelection = null;
+let lastSelectedTable = null;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
 
@@ -1718,6 +1765,7 @@ function renderCatalog(entities) {
       const target = event.currentTarget;
       const table = target.getAttribute('data-table');
       const label = target.getAttribute('data-label');
+      lastSelectedTable = table;
       await openModelModal(table, label);
     });
   });
@@ -3770,6 +3818,10 @@ if (modelWizardConfirmEl) {
     const selectedModel = modelWizardSelection;
     closeModelWizardModal();
     if (!activeTable) {
+      if (lastSelectedTable) {
+        await applyWizardModelSelection(lastSelectedTable, selectedModel);
+        return;
+      }
       pendingWizardModelSelection = selectedModel;
       showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
       return;
