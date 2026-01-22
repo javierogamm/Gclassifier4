@@ -947,6 +947,47 @@
         max-width: 880px;
       }
 
+      .wizard-body {
+        display: grid;
+        gap: 12px;
+      }
+
+      .wizard-question {
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .wizard-options button,
+      .wizard-results button {
+        width: 100%;
+        text-align: left;
+      }
+
+      .wizard-results {
+        display: grid;
+        gap: 8px;
+      }
+
+      .wizard-results button.is-selected {
+        background: #1f2937;
+        color: #ffffff;
+      }
+
+      .wizard-step {
+        animation: wizard-fade 0.28s ease;
+      }
+
+      @keyframes wizard-fade {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
       .linked-series {
         margin-top: 16px;
         display: grid;
@@ -963,7 +1004,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.41.0</p>
+            <p class="version-text"><strong>Versión:</strong> v0.42.4</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -996,11 +1037,14 @@
         <section class="card">
           <div class="results-header">
             <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
-            <div class="results-actions">
-              <div id="language-switcher" class="language-switcher" hidden></div>
-              <button id="open-create-modal" type="button">Crear elemento</button>
-            </div>
+          <div class="results-actions">
+            <div id="language-switcher" class="language-switcher" hidden></div>
+            <button id="model-wizard-button" class="secondary" type="button" data-auth-visible="true" hidden>
+              ¿Qué cuadro uso?
+            </button>
+            <button id="open-create-modal" type="button">Crear elemento</button>
           </div>
+        </div>
           <form id="filter-form" class="filters">
             <label>
               Buscar código_serie
@@ -1124,6 +1168,32 @@
         </div>
         <p id="model-modal-message" class="muted"></p>
         <div id="model-list" class="modal-grid"></div>
+      </div>
+    </div>
+
+    <div id="model-wizard-modal" class="modal" hidden>
+      <div
+        class="modal-content modal-wide"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="model-wizard-title"
+      >
+        <div class="modal-header">
+          <h3 id="model-wizard-title">¿Qué cuadro uso?</h3>
+          <button id="model-wizard-close" class="secondary" type="button">Cerrar</button>
+        </div>
+        <div class="wizard-body">
+          <p id="model-wizard-question" class="wizard-question"></p>
+          <div id="model-wizard-options" class="modal-grid wizard-options"></div>
+          <div id="model-wizard-result" class="wizard-results" hidden></div>
+        </div>
+        <div class="form-actions">
+          <span id="model-wizard-status" class="form-status"></span>
+          <div class="inline-input">
+            <button id="model-wizard-back" class="secondary" type="button">Atrás</button>
+            <button id="model-wizard-confirm" type="button" disabled>Confirmar modelo</button>
+          </div>
+        </div>
       </div>
     </div>
 
