@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.42.5
+
+- El asistente "¿Qué cuadro uso?" aplica el filtro del modelo sugerido al confirmar aunque se esté seleccionando un cuadro en el modal.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.4
 
 - El asistente aplica el modelo sugerido al confirmar si ya hay un cuadro seleccionado en el catálogo.

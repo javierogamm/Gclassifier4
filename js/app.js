@@ -3817,16 +3817,16 @@ if (modelWizardConfirmEl) {
     }
     const selectedModel = modelWizardSelection;
     closeModelWizardModal();
-    if (!activeTable) {
-      if (lastSelectedTable) {
-        await applyWizardModelSelection(lastSelectedTable, selectedModel);
-        return;
-      }
+    const targetTable = pendingModelTable || activeTable || lastSelectedTable;
+    if (!targetTable) {
       pendingWizardModelSelection = selectedModel;
       showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
       return;
     }
-    await applyWizardModelSelection(activeTable, selectedModel);
+    if (pendingModelTable) {
+      closeModelModal();
+    }
+    await applyWizardModelSelection(targetTable, selectedModel);
   });
 }
 modelModalCloseEl.addEventListener('click', closeModelModal);
