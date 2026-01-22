@@ -120,7 +120,7 @@ const MODEL_WIZARD_TREE = {
           pregunta: 'Forma parte del proyecto provincial',
           opciones: {
             Sí: {
-              outputs: ['SETDIBA', 'QdeCAC Hñibrido ESET'],
+              outputs: ['SETDIBA', 'QdeCAC Híbrido ESET'],
             },
             No: {
               pregunta: 'Modelo QdeCAC',
@@ -132,7 +132,7 @@ const MODEL_WIZARD_TREE = {
                       output: 'QddeCAC',
                     },
                     Simplificado: {
-                      output: 'QdeCAC Hñibrido ESET',
+                      output: 'QdeCAC Híbrido ESET',
                     },
                   },
                 },
@@ -153,7 +153,7 @@ const MODEL_WIZARD_TREE = {
                   output: 'QddeCAC',
                 },
                 Simplificado: {
-                  output: 'QdeCAC Hñibrido ESET',
+                  output: 'QdeCAC Híbrido ESET',
                 },
               },
             },

@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.42.2
+
+- Se ajustaron los nombres de modelos sugeridos por el asistente para que coincidan con los registros de base de datos.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.1
 
 - El asistente "¿Qué cuadro uso?" ahora puede abrirse antes de seleccionar cuadro y aplica el modelo sugerido al elegir un cuadro del catálogo.
