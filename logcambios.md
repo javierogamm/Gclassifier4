@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.42.7
+
+- Se fuerza la aplicación del modelo sugerido al confirmar el asistente incluso si el modal de selección está abierto, con un breve retraso para asegurar la recarga.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.6
 
 - El asistente aplica el filtro del modelo sugerido aunque el modal de selección de cuadro esté abierto.

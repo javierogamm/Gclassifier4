@@ -3825,8 +3825,12 @@ if (modelWizardConfirmEl) {
       showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
       return;
     }
+    lastSelectedTable = targetTable;
     if (modelModalEl && !modelModalEl.hidden) {
       closeModelModal();
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 50);
+      });
     }
     await applyWizardModelSelection(targetTable, selectedModel);
   });
