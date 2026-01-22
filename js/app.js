@@ -18,6 +18,7 @@ const registerSubmitEl = document.getElementById('register-submit');
 const loginStatusEl = document.getElementById('login-status');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
+const wizardSelectionHintEl = document.getElementById('wizard-selection-hint');
 const exportAllButton = document.getElementById('export-all');
 const resultsEl = document.getElementById('results');
 const vercelWarningEl = document.getElementById('vercel-warning');
@@ -522,6 +523,16 @@ function showMessage(message, isError = false) {
   messageEl.className = isError ? 'error' : 'muted';
 }
 
+function showWizardSelectionHint() {
+  if (!wizardSelectionHintEl) return;
+  wizardSelectionHintEl.hidden = false;
+}
+
+function hideWizardSelectionHint() {
+  if (!wizardSelectionHintEl) return;
+  wizardSelectionHintEl.hidden = true;
+}
+
 function updateLoginStatus(message, isError = false) {
   if (!loginStatusEl) return;
   loginStatusEl.textContent = message || '';
@@ -754,6 +765,7 @@ function openModelWizardModal() {
     showMessage('Inicia sesión para usar el asistente de modelo.', true);
     return;
   }
+  hideWizardSelectionHint();
   resetModelWizard();
   renderModelWizard();
   modelWizardModalEl.hidden = false;
@@ -765,6 +777,7 @@ function closeModelWizardModal() {
   if (modelWizardStatusEl) {
     modelWizardStatusEl.textContent = '';
   }
+  showWizardSelectionHint();
 }
 
 async function applyWizardModelSelection(table, modelValue) {
@@ -1762,6 +1775,7 @@ function renderCatalog(entities) {
 
   catalogEl.querySelectorAll('button[data-table]').forEach((button) => {
     button.addEventListener('click', async (event) => {
+      hideWizardSelectionHint();
       const target = event.currentTarget;
       const table = target.getAttribute('data-table');
       const label = target.getAttribute('data-label');
@@ -3823,7 +3837,7 @@ if (modelWizardConfirmEl) {
         return;
       }
       pendingWizardModelSelection = selectedModel;
-      showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
+      showMessage('', false);
       return;
     }
     await applyWizardModelSelection(activeTable, selectedModel);
