@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.41.0
+
+- Las exportaciones CSV ahora se generan en UTF-8 con separador de columnas compatible con Excel.
+- Se actualizó la versión visible de la app.
+
 ## v0.40.0
 
 - Se añadió el botón "Exportar todo" visible solo para administradores, que genera un ZIP con los CSV de carga y vinculación de todos los modelos disponibles.

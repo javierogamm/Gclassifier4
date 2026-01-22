@@ -887,21 +887,26 @@ function buildFileSegment(value, fallback) {
   return cleaned ? cleaned.toUpperCase() : String(fallback || '').toUpperCase() || 'MODELO';
 }
 
-function createCsvValue(value) {
+const CSV_DELIMITER = ';';
+
+function createCsvValue(value, delimiter = CSV_DELIMITER) {
   if (value === null || value === undefined) return '';
   const text = String(value);
-  if (/["\n,]/.test(text)) {
+  const escapePattern = new RegExp(`[\"\\n\\r${delimiter}]`);
+  if (escapePattern.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
   return text;
 }
 
 function buildCsvContent(rows, columns) {
-  const headerRow = columns.map((column) => createCsvValue(column.header)).join(',');
+  const headerRow = columns
+    .map((column) => createCsvValue(column.header, CSV_DELIMITER))
+    .join(CSV_DELIMITER);
   const dataRows = rows.map((row) =>
-    columns.map((column) => createCsvValue(row?.[column.key])).join(','),
+    columns.map((column) => createCsvValue(row?.[column.key], CSV_DELIMITER)).join(CSV_DELIMITER),
   );
-  return ['\uFEFF' + headerRow, ...dataRows].join('\n');
+  return ['\uFEFF' + headerRow, ...dataRows].join('\r\n');
 }
 
 function triggerCsvDownload(filename, csvContent) {
