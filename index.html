@@ -169,6 +169,7 @@
       }
 
       .catalog-actions {
+        position: relative;
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
@@ -974,10 +975,15 @@
       }
 
       .wizard-selection-hint {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        right: 0;
+        z-index: 2;
         display: grid;
         gap: 4px;
         justify-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         padding: 10px 14px;
         border-radius: 10px;
         border: 1px dashed #cbd5f5;
@@ -1022,7 +1028,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.42.5</p>
+            <p class="version-text"><strong>Versión:</strong> v0.42.6</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -1048,7 +1054,7 @@
             <div class="catalog-actions">
               <button id="export-all" class="secondary" type="button" hidden>Exportar todo</button>
               <div id="wizard-selection-hint" class="wizard-selection-hint" hidden>
-                Encima de los botones de seleccionar cuadro DALE AL BOTÓN DE SELECCIONAR CUADRO
+                DALE A SELECCIONAR CUADRO
                 <span class="wizard-selection-hint-arrow">⬇️</span>
               </div>
               <div id="catalog" class="catalog-actions"></div>

@@ -1777,6 +1777,7 @@ function renderCatalog(entities) {
 
   catalogEl.querySelectorAll('button[data-table]').forEach((button) => {
     button.addEventListener('click', async (event) => {
+      hideWizardSelectionHint();
       const target = event.currentTarget;
       const table = target.getAttribute('data-table');
       const label = target.getAttribute('data-label');
@@ -3840,7 +3841,6 @@ if (modelWizardConfirmEl) {
       }
       pendingWizardModelSelection = selectedModel;
       showMessage('', false);
-      showWizardSelectionHint();
       return;
     }
     await applyWizardModelSelection(activeTable, selectedModel);

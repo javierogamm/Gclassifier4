@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.42.6
+
+- El aviso del asistente ahora solo aparece al cerrar el modal y se muestra encima del botón “Seleccionar cuadro”.
+- El texto del aviso se actualizó a “DALE A SELECCIONAR CUADRO” y se oculta al elegir un cuadro.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.5
 
 - Al cerrar el asistente “¿Qué cuadro uso?” se muestra un aviso con flecha para indicar el botón de seleccionar cuadro y aplicar el filtro.
