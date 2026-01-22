@@ -3817,13 +3817,15 @@ if (modelWizardConfirmEl) {
     }
     const selectedModel = modelWizardSelection;
     closeModelWizardModal();
-    const targetTable = pendingModelTable || activeTable || lastSelectedTable;
+    const modalTable =
+      pendingModelTable || (modelModalEl && !modelModalEl.hidden ? lastSelectedTable : null);
+    const targetTable = modalTable || activeTable || lastSelectedTable;
     if (!targetTable) {
       pendingWizardModelSelection = selectedModel;
       showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
       return;
     }
-    if (pendingModelTable) {
+    if (modelModalEl && !modelModalEl.hidden) {
       closeModelModal();
     }
     await applyWizardModelSelection(targetTable, selectedModel);
