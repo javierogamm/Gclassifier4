@@ -676,6 +676,15 @@ function buildModelOption(modelValue) {
   };
 }
 
+function normalizeWizardModelValue(modelValue) {
+  if (!modelValue) return modelValue;
+  const normalized = String(modelValue).trim();
+  if (normalized.toLowerCase() === 'gestiona') {
+    return 'GESTIONA';
+  }
+  return normalized;
+}
+
 function animateWizardStep(element) {
   if (!element) return;
   element.classList.remove('wizard-step');
@@ -769,7 +778,8 @@ function closeModelWizardModal() {
 
 async function applyWizardModelSelection(table, modelValue) {
   if (!table || !modelValue) return;
-  await handleModelSelection(table, buildModelOption(modelValue));
+  const normalizedModelValue = normalizeWizardModelValue(modelValue);
+  await handleModelSelection(table, buildModelOption(normalizedModelValue));
 }
 
 function openLoginModal() {

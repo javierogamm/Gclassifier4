@@ -55,7 +55,19 @@
         display: grid;
         gap: 8px;
         justify-items: end;
+      }
+
+      .header-wizard {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         margin-left: auto;
+      }
+
+      .wizard-cta {
+        font-size: 14px;
+        padding: 12px 24px;
+        border-radius: 6px;
       }
 
       .header-auth-actions {
@@ -1004,9 +1016,20 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.42.4</p>
+            <p class="version-text"><strong>Versión:</strong> v0.42.5</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
+        </div>
+        <div class="header-wizard">
+          <button
+            id="model-wizard-button"
+            class="secondary wizard-cta"
+            type="button"
+            data-auth-visible="true"
+            hidden
+          >
+            ¿Qué cuadro uso?
+          </button>
         </div>
         <div class="header-auth">
           <span id="login-user" class="muted">Sesión: sin iniciar</span>
@@ -1039,9 +1062,6 @@
             <h2 id="results-title">Modelo: — · Elementos cargados: 0</h2>
           <div class="results-actions">
             <div id="language-switcher" class="language-switcher" hidden></div>
-            <button id="model-wizard-button" class="secondary" type="button" data-auth-visible="true" hidden>
-              ¿Qué cuadro uso?
-            </button>
             <button id="open-create-modal" type="button">Crear elemento</button>
           </div>
         </div>

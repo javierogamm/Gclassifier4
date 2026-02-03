@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.42.5
+
+- Se movió y amplió el botón “¿Qué cuadro uso?” al encabezado para hacerlo más visible.
+- El asistente normaliza el modelo Gestiona a "GESTIONA" para aplicar correctamente el filtro y habilitar la selección de idioma.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.4
 
 - El asistente aplica el modelo sugerido al confirmar si ya hay un cuadro seleccionado en el catálogo.
