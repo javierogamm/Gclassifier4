@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.43.4
+
+- El asistente “¿Qué cuadro uso?” normaliza los modelos QdeCAC para que coincidan con los valores en Supabase, evitando fallos por mayúsculas o espacios.
+- Se actualizaron los nombres visibles de QdeCAC y su variante híbrida para cargar correctamente el cuadro.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.3
 
 - El login ahora realiza un calentamiento silencioso de Supabase y fija el cuadro por defecto para que el asistente “¿Qué cuadro uso?” aplique el filtro sin exigir pulsar “Cargar cuadro” la primera vez.
