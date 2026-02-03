@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.43.1
+
+- La confirmación de carga del cuadro se solicita antes de cerrar el modal de selección de modelo y, al aceptar, aplica el filtro y carga el acordeón.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.0
 
 - El asistente “¿Qué cuadro uso?” ahora confirma la carga después de elegir idioma cuando el modelo es multiidioma y mantiene la confirmación directa cuando no hay idiomas.
