@@ -795,6 +795,43 @@ async function applyWizardModelSelection(table, modelValue, { confirmFilter = tr
   await handleModelSelection(table, buildModelOption(normalizedModelValue), { confirmFilter });
 }
 
+async function startWizardLoadFlow(table, modelOption) {
+  if (!table) return;
+  if (!supabaseClient) {
+    showMessage('Configura Supabase antes de consultar tablas.', true);
+    return;
+  }
+  setLanguageOptions([], null);
+  const { options, error } = await fetchLanguageOptions(table, modelOption);
+  if (error) {
+    showMessage(mapSupabaseError(error), true);
+    return;
+  }
+  const openConfirmLoad = (languageOption = null, languageOptions = []) => {
+    openFilterConfirmModal(table, modelOption, {
+      title: '¿Cargar cuadro?',
+      message: `¿Quieres cargar el cuadro ${modelOption.label}?`,
+      confirmLabel: 'Sí, cargar',
+      cancelLabel: 'Cancelar',
+      onConfirm: async () => {
+        if (languageOption) {
+          setLanguageOptions(languageOptions, languageOption);
+        }
+        await loadRows(table, modelOption, languageOption);
+      },
+    });
+  };
+  if (options.length > 0) {
+    openLanguageModal(table, modelOption, options, {
+      onSelect: async (context, option) => {
+        openConfirmLoad(option, context.options);
+      },
+    });
+    return;
+  }
+  openConfirmLoad();
+}
+
 function openLoginModal() {
   if (!loginModalEl) return;
   loginModalEl.hidden = false;
@@ -1726,7 +1763,7 @@ function closeFilterConfirmModal() {
   }
 }
 
-function openLanguageModal(table, modelFilter, options) {
+function openLanguageModal(table, modelFilter, options, { onSelect } = {}) {
   if (!languageModalEl || !languageListEl) return;
   pendingLanguageContext = { table, modelFilter, options };
   languageModalTitleEl.textContent = `Selecciona un idioma (${modelFilter?.label || 'modelo'})`;
@@ -1739,19 +1776,14 @@ function openLanguageModal(table, modelFilter, options) {
     button.textContent = option.label;
     button.addEventListener('click', async () => {
       const context = pendingLanguageContext;
-      const modelLabel = context?.modelFilter?.label || context?.modelFilter?.value || 'modelo seleccionado';
       closeLanguageModal();
       if (!context?.table) return;
-      openFilterConfirmModal(context.table, context.modelFilter, {
-        title: '¿Filtrar cuadro?',
-        message: `Has seleccionado el idioma ${option.label}. ¿Quieres filtrar el cuadro ${modelLabel}?`,
-        confirmLabel: 'Sí, filtrar',
-        cancelLabel: 'Cancelar',
-        onConfirm: async () => {
-          setLanguageOptions(context.options, option);
-          await loadRows(context.table, context.modelFilter, option);
-        },
-      });
+      if (onSelect) {
+        await onSelect(context, option);
+        return;
+      }
+      setLanguageOptions(context.options, option);
+      await loadRows(context.table, context.modelFilter, option);
     });
     languageListEl.appendChild(button);
   });
@@ -2757,7 +2789,8 @@ async function openModelModal(table, label) {
   if (pendingWizardModelSelection) {
     const modelValue = pendingWizardModelSelection;
     pendingWizardModelSelection = null;
-    await applyWizardModelSelection(table, modelValue);
+    const modelOption = buildModelOption(normalizeWizardModelValue(modelValue));
+    await startWizardLoadFlow(table, modelOption);
     return;
   }
 
@@ -3913,20 +3946,12 @@ if (modelWizardConfirmEl) {
     const modelOption = buildModelOption(selectedModel);
     const targetTable = activeTable || lastSelectedTable;
     closeModelWizardModal();
-    openFilterConfirmModal(targetTable, modelOption, {
-      title: '¿Cargar cuadro?',
-      message: `¿Quieres cargar el cuadro ${modelOption.label}?`,
-      confirmLabel: 'Sí, cargar',
-      cancelLabel: 'Cancelar',
-      onConfirm: async () => {
-        if (targetTable) {
-          await applyWizardModelSelection(targetTable, selectedModel, { confirmFilter: false });
-          return;
-        }
-        pendingWizardModelSelection = selectedModel;
-        showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
-      },
-    });
+    if (!targetTable) {
+      pendingWizardModelSelection = selectedModel;
+      showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
+      return;
+    }
+    await startWizardLoadFlow(targetTable, modelOption);
   });
 }
 modelModalCloseEl.addEventListener('click', closeModelModal);
