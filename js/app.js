@@ -42,6 +42,12 @@ const languageModalTitleEl = document.getElementById('language-modal-title');
 const languageModalMessageEl = document.getElementById('language-modal-message');
 const languageModalCloseEl = document.getElementById('language-modal-close');
 const languageListEl = document.getElementById('language-list');
+const filterConfirmModalEl = document.getElementById('filter-confirm-modal');
+const filterConfirmTitleEl = document.getElementById('filter-confirm-title');
+const filterConfirmMessageEl = document.getElementById('filter-confirm-message');
+const filterConfirmCloseEl = document.getElementById('filter-confirm-close');
+const filterConfirmYesEl = document.getElementById('filter-confirm-yes');
+const filterConfirmNoEl = document.getElementById('filter-confirm-no');
 const filterFormEl = document.getElementById('filter-form');
 const filterCodigoSerieEl = document.getElementById('filter-codigo-serie');
 const filterTituloSerieEl = document.getElementById('filter-titulo-serie');
@@ -370,6 +376,7 @@ let modelWizardHistory = [];
 let modelWizardSelection = null;
 let pendingWizardModelSelection = null;
 let lastSelectedTable = null;
+let pendingFilterContext = null;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
 
@@ -1708,6 +1715,15 @@ function closeLanguageModal() {
   }
 }
 
+function closeFilterConfirmModal() {
+  if (!filterConfirmModalEl) return;
+  filterConfirmModalEl.hidden = true;
+  pendingFilterContext = null;
+  if (filterConfirmMessageEl) {
+    filterConfirmMessageEl.textContent = '';
+  }
+}
+
 function openLanguageModal(table, modelFilter, options) {
   if (!languageModalEl || !languageListEl) return;
   pendingLanguageContext = { table, modelFilter, options };
@@ -1729,6 +1745,19 @@ function openLanguageModal(table, modelFilter, options) {
     languageListEl.appendChild(button);
   });
   languageModalEl.hidden = false;
+}
+
+function openFilterConfirmModal(table, modelFilter) {
+  if (!filterConfirmModalEl) return;
+  pendingFilterContext = { table, modelFilter };
+  if (filterConfirmTitleEl) {
+    filterConfirmTitleEl.textContent = '¿Filtrar cuadro?';
+  }
+  if (filterConfirmMessageEl) {
+    const modelLabel = modelFilter?.label || modelFilter?.value || 'modelo seleccionado';
+    filterConfirmMessageEl.textContent = `Se aplicará el filtro del cuadro ${modelLabel}.`;
+  }
+  filterConfirmModalEl.hidden = false;
 }
 
 function renderCatalog(entities) {
@@ -2677,7 +2706,7 @@ async function handleModelSelection(table, modelOption) {
     openLanguageModal(table, modelOption, options);
     return;
   }
-  await loadRows(table, modelOption, null);
+  openFilterConfirmModal(table, modelOption);
 }
 
 async function openModelModal(table, label) {
@@ -3859,6 +3888,21 @@ modelModalCloseEl.addEventListener('click', closeModelModal);
 if (languageModalCloseEl) {
   languageModalCloseEl.addEventListener('click', closeLanguageModal);
 }
+if (filterConfirmCloseEl) {
+  filterConfirmCloseEl.addEventListener('click', closeFilterConfirmModal);
+}
+if (filterConfirmNoEl) {
+  filterConfirmNoEl.addEventListener('click', closeFilterConfirmModal);
+}
+if (filterConfirmYesEl) {
+  filterConfirmYesEl.addEventListener('click', async () => {
+    const context = pendingFilterContext;
+    closeFilterConfirmModal();
+    if (context?.table) {
+      await loadRows(context.table, context.modelFilter, null);
+    }
+  });
+}
 openCreateModalButton.addEventListener('click', openCreateModal);
 createModalCloseEl.addEventListener('click', closeCreateModal);
 createPosicionSearchEl.addEventListener('click', () => {
@@ -3944,6 +3988,13 @@ if (languageModalEl) {
     }
   });
 }
+if (filterConfirmModalEl) {
+  filterConfirmModalEl.addEventListener('click', (event) => {
+    if (event.target === filterConfirmModalEl) {
+      closeFilterConfirmModal();
+    }
+  });
+}
 if (historyModalCloseEl) {
   historyModalCloseEl.addEventListener('click', closeHistoryModal);
 }
@@ -4004,6 +4055,9 @@ window.addEventListener('keydown', (event) => {
     }
     if (languageModalEl && !languageModalEl.hidden) {
       closeLanguageModal();
+    }
+    if (filterConfirmModalEl && !filterConfirmModalEl.hidden) {
+      closeFilterConfirmModal();
     }
     if (modelWizardModalEl && !modelWizardModalEl.hidden) {
       closeModelWizardModal();
