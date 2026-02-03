@@ -127,7 +127,7 @@ const MODEL_WIZARD_TREE = {
           pregunta: 'Forma parte del proyecto provincial',
           opciones: {
             Sí: {
-              output: 'QdeCAC Híbrido ESET',
+              output: 'QdeCAC Hibrido ESET',
             },
             No: {
               pregunta: 'Modelo QdeCAC',
@@ -139,7 +139,7 @@ const MODEL_WIZARD_TREE = {
                       output: 'QdeCAC',
                     },
                     Simplificado: {
-                      output: 'QdeCAC Híbrido ESET',
+                      output: 'QdeCAC Hibrido ESET',
                     },
                   },
                 },
@@ -166,7 +166,7 @@ const MODEL_WIZARD_TREE = {
                       output: 'QdeCAC',
                     },
                     Simplificado: {
-                      output: 'QdeCAC Híbrido ESET',
+                      output: 'QdeCAC Hibrido ESET',
                     },
                   },
                 },
@@ -183,14 +183,14 @@ const MODEL_WIZARD_TREE = {
             Si: {
               pregunta: 'Completo o simplificado ESET',
               opciones: {
-                Completo: {
-                  output: 'QdeCaC',
+                    Completo: {
+                      output: 'QdeCAC',
+                    },
+                    Simplificado: {
+                      output: 'QdeCAC Hibrido ESET',
+                    },
+                  },
                 },
-                Simplificado: {
-                  output: 'QdeCaC Híbrido Eset',
-                },
-              },
-            },
             No: {
               output: 'Gestiona',
             },
@@ -202,14 +202,14 @@ const MODEL_WIZARD_TREE = {
             Si: {
               pregunta: 'Completo o simplificado ESET',
               opciones: {
-                Completo: {
-                  output: 'QdeCaC',
+                    Completo: {
+                      output: 'QdeCAC',
+                    },
+                    Simplificado: {
+                      output: 'QdeCAC Hibrido ESET',
+                    },
+                  },
                 },
-                Simplificado: {
-                  output: 'QdeCaC Híbrido Eset',
-                },
-              },
-            },
             No: {
               output: 'Gestiona',
             },
@@ -705,10 +705,10 @@ function normalizeWizardModelValue(modelValue) {
     return 'GESTIONA';
   }
   if (key.includes('qdecac') && key.includes('hibrido')) {
-    return 'QdeCaC Híbrido Eset';
+    return 'QdeCAC Hibrido ESET';
   }
   if (key === 'qdecac') {
-    return 'QdeCaC';
+    return 'QdeCAC';
   }
   if (key.includes('autoridad portuaria')) {
     return 'Autoridades Portuarias';
