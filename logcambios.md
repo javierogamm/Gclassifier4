@@ -1,5 +1,13 @@
 # Log de cambios
 
+## v0.42.7
+
+- Se corrigió el título principal para mostrar "Clasificación".
+- Se invirtió el orden de los botones “¿Qué cuadro uso?” y “Cargar cuadro” en el encabezado.
+- El botón “Seleccionar cuadro” pasó a llamarse “Cargar cuadro” en el encabezado y catálogo.
+- El modal de selección muestra “Clasificación” correctamente.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.6
 
 - Se movieron los botones “Seleccionar cuadro” y “¿Qué cuadro uso?” al encabezado en una línea dedicada, alineados y con tamaño duplicado.

@@ -1773,8 +1773,8 @@ function renderCatalog(entities) {
     selectButton.className = 'secondary header-action-button';
     selectButton.setAttribute('data-table', entity.carga.table);
     selectButton.setAttribute('data-label', entity.label);
-    selectButton.setAttribute('aria-label', `Seleccionar cuadro ${entity.label}`);
-    selectButton.textContent = 'Seleccionar cuadro';
+    selectButton.setAttribute('aria-label', `Cargar cuadro ${entity.label}`);
+    selectButton.textContent = 'Cargar cuadro';
     if (headerSelectActionsEl) {
       headerSelectActionsEl.appendChild(selectButton);
     } else {
@@ -2710,7 +2710,7 @@ async function openModelModal(table, label) {
     return;
   }
 
-  modelModalMessageEl.textContent = 'Selecciona Cuadro de Clasficación';
+  modelModalMessageEl.textContent = 'Selecciona Cuadro de Clasificación';
   modelOptions.forEach((option) => {
     const button = document.createElement('button');
     button.type = 'button';
