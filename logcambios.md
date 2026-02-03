@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.43.3
+
+- El login ahora realiza un calentamiento silencioso de Supabase y fija el cuadro por defecto para que el asistente “¿Qué cuadro uso?” aplique el filtro sin exigir pulsar “Cargar cuadro” la primera vez.
+- Se normalizaron los nombres sugeridos por el asistente para cargar correctamente “QdeCaC Híbrido Eset” y “Autoridades Portuarias”.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.2
 
 - Al seleccionar un cuadro multiidioma desde el modal, se abre directamente el selector de idioma sin pasar por el botón “Cargar cuadro”.

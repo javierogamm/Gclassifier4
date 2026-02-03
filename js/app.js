@@ -184,10 +184,10 @@ const MODEL_WIZARD_TREE = {
               pregunta: 'Completo o simplificado ESET',
               opciones: {
                 Completo: {
-                  output: 'QdeCAC',
+                  output: 'QdeCaC',
                 },
                 Simplificado: {
-                  output: 'QdeCAC Híbrido ESET',
+                  output: 'QdeCaC Híbrido Eset',
                 },
               },
             },
@@ -203,10 +203,10 @@ const MODEL_WIZARD_TREE = {
               pregunta: 'Completo o simplificado ESET',
               opciones: {
                 Completo: {
-                  output: 'QdeCAC',
+                  output: 'QdeCaC',
                 },
                 Simplificado: {
-                  output: 'QdeCAC Híbrido ESET',
+                  output: 'QdeCaC Híbrido Eset',
                 },
               },
             },
@@ -352,7 +352,7 @@ const MODEL_WIZARD_TREE = {
       },
     },
     'Autoridad Portuaria': {
-      output: 'Autoridades portuarias',
+      output: 'Autoridades Portuarias',
     },
   },
 };
@@ -689,11 +689,29 @@ function buildModelOption(modelValue) {
   };
 }
 
+function normalizeModelKey(value) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 function normalizeWizardModelValue(modelValue) {
   if (!modelValue) return modelValue;
   const normalized = String(modelValue).trim();
-  if (normalized.toLowerCase() === 'gestiona') {
+  const key = normalizeModelKey(normalized);
+  if (key === 'gestiona') {
     return 'GESTIONA';
+  }
+  if (key.includes('qdecac') && key.includes('hibrido')) {
+    return 'QdeCaC Híbrido Eset';
+  }
+  if (key === 'qdecac') {
+    return 'QdeCaC';
+  }
+  if (key.includes('autoridad portuaria')) {
+    return 'Autoridades Portuarias';
   }
   return normalized;
 }
@@ -887,12 +905,30 @@ async function handleLogin() {
 
     setAuthUser({ id: data.id, name: data.name, admin: data.admin === true });
     updateLoginStatus('Sesión iniciada.', false);
+    await warmUpAfterLogin();
     closeLoginModal();
   } catch (error) {
     updateLoginStatus(mapSupabaseError(error), true);
   } finally {
     loginSubmitEl.disabled = false;
     registerSubmitEl.disabled = false;
+  }
+}
+
+async function warmUpAfterLogin() {
+  if (!supabaseClient || !activeCatalog) return;
+  const entities = listEntities(activeCatalog);
+  if (!entities.length) return;
+  const fallbackTable = entities[0]?.carga?.table;
+  const targetTable = activeTable || lastSelectedTable || fallbackTable;
+  if (!targetTable) return;
+  if (!lastSelectedTable) {
+    lastSelectedTable = targetTable;
+  }
+  try {
+    await supabaseClient.from(targetTable).select('modelo').limit(1);
+  } catch (error) {
+    // Silencioso: solo intentamos activar la conexión inicial.
   }
 }
 
