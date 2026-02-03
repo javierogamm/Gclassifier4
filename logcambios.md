@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.42.6
+
+- Se movieron los botones “Seleccionar cuadro” y “¿Qué cuadro uso?” al encabezado en una línea dedicada, alineados y con tamaño duplicado.
+- El botón “Actividades” ahora solo es visible para el rol ADMIN (se oculta por completo para USUARIO).
+- Se actualizó la versión visible de la app.
+
 ## v0.42.5
 
 - Se movió y amplió el botón “¿Qué cuadro uso?” al encabezado para hacerlo más visible.
