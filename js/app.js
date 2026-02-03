@@ -2819,10 +2819,19 @@ async function openModelModal(table, label) {
     button.textContent = option.label;
     button.addEventListener('click', async () => {
       const selectedTable = pendingModelTable;
-      closeModelModal();
-      if (selectedTable) {
-        await handleModelSelection(selectedTable, option);
-      }
+      if (!selectedTable) return;
+      openFilterConfirmModal(selectedTable, option, {
+        title: '¿Cargar cuadro?',
+        message: `¿Quieres cargar el cuadro ${option.label}?`,
+        confirmLabel: 'Sí, cargar',
+        cancelLabel: 'Cancelar',
+        onConfirm: async (context) => {
+          closeModelModal();
+          if (context?.table) {
+            await handleModelSelection(context.table, option, { confirmFilter: false });
+          }
+        },
+      });
     });
     modelListEl.appendChild(button);
   });
