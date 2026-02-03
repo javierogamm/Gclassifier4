@@ -1,5 +1,22 @@
 # Log de cambios
 
+## v0.43.0
+
+- El asistente “¿Qué cuadro uso?” ahora confirma la carga después de elegir idioma cuando el modelo es multiidioma y mantiene la confirmación directa cuando no hay idiomas.
+- Se actualizó la versión visible de la app.
+
+## v0.42.9
+
+- En el asistente “¿Qué cuadro uso?” la selección de idioma se realiza antes de solicitar la confirmación de filtrado.
+- Se actualizó la versión visible de la app.
+
+## v0.42.8
+
+- Se corrigió "Clasificación" en el título principal y en el modal de selección de cuadros.
+- El botón "Seleccionar cuadro" pasó a llamarse "Cargar cuadro" y se invirtió el orden con “¿Qué cuadro uso?” en el encabezado.
+- El asistente “¿Qué cuadro uso?” ahora pide confirmación final para cargar el cuadro y aplica el filtro al aceptar.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.7
 
 - Se añadió un modal de confirmación para filtrar cuadros sin idiomas tras seleccionar el modelo.
