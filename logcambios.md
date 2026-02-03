@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.43.5
+
+- Tras iniciar sesión, el acordeón carga por defecto el modelo GESTIONA en castellano.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.4
 
 - El asistente “¿Qué cuadro uso?” normaliza los modelos QdeCAC para que coincidan con los valores en Supabase, evitando fallos por mayúsculas o espacios.

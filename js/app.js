@@ -116,6 +116,8 @@ const PLACEHOLDER_PATTERNS = [
   'changeme',
   'example',
 ];
+const DEFAULT_MODEL_VALUE = 'GESTIONA';
+const DEFAULT_SPANISH_LANGUAGE_KEYS = ['castellano', 'espanol', 'es'];
 const NULL_MODEL_TOKEN = '__null_model__';
 const MODEL_WIZARD_TREE = {
   pregunta: 'Tipo de entidad',
@@ -378,6 +380,7 @@ let pendingWizardModelSelection = null;
 let lastSelectedTable = null;
 let pendingFilterContext = null;
 let pendingFilterAction = null;
+let hasAutoLoadedDefaultModel = false;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
 
@@ -554,6 +557,9 @@ function setAuthUser(user) {
       logoutButton.hidden = true;
       localStorage.removeItem('authUser');
     }
+  }
+  if (!user) {
+    hasAutoLoadedDefaultModel = false;
   }
   applyAccessControl();
 }
@@ -906,6 +912,7 @@ async function handleLogin() {
     setAuthUser({ id: data.id, name: data.name, admin: data.admin === true });
     updateLoginStatus('Sesión iniciada.', false);
     await warmUpAfterLogin();
+    await loadDefaultGestionaAfterLogin();
     closeLoginModal();
   } catch (error) {
     updateLoginStatus(mapSupabaseError(error), true);
@@ -930,6 +937,38 @@ async function warmUpAfterLogin() {
   } catch (error) {
     // Silencioso: solo intentamos activar la conexión inicial.
   }
+}
+
+async function loadDefaultGestionaAfterLogin() {
+  if (!supabaseClient || !activeCatalog) return;
+  if (!userIsLoggedIn()) return;
+  if (hasAutoLoadedDefaultModel || activeModelFilter) return;
+  const entities = listEntities(activeCatalog);
+  if (!entities.length) return;
+  const fallbackTable = entities[0]?.carga?.table;
+  const targetTable = activeTable || lastSelectedTable || fallbackTable;
+  if (!targetTable) return;
+  if (!lastSelectedTable) {
+    lastSelectedTable = targetTable;
+  }
+
+  const modelOption = buildModelOption(DEFAULT_MODEL_VALUE);
+  const { options, error } = await fetchLanguageOptions(targetTable, modelOption);
+  if (error) {
+    showMessage(mapSupabaseError(error), true);
+    return;
+  }
+
+  hasAutoLoadedDefaultModel = true;
+  if (options.length > 0) {
+    const spanishOption = resolveSpanishLanguageOption(options) || options[0];
+    setLanguageOptions(options, spanishOption);
+    await loadRows(targetTable, modelOption, spanishOption);
+    return;
+  }
+
+  setLanguageOptions([], null);
+  await loadRows(targetTable, modelOption, null);
 }
 
 async function handleRegister() {
@@ -980,6 +1019,7 @@ async function handleRegister() {
 
     setAuthUser({ id: data.id, name: data.name, admin: data.admin === true });
     updateLoginStatus('Registro completado.', false);
+    await loadDefaultGestionaAfterLogin();
     closeLoginModal();
   } catch (error) {
     updateLoginStatus(mapSupabaseError(error), true);
@@ -1350,6 +1390,32 @@ async function fetchAllRows(table, modelFilter, languageFilter) {
 function normalizeLanguageValue(value) {
   if (value === null || value === undefined) return '';
   return String(value).trim();
+}
+
+function normalizeLanguageKey(value) {
+  return normalizeModelKey(value).replace(/[^a-z0-9]/g, '');
+}
+
+function resolveSpanishLanguageOption(options) {
+  if (!options?.length) return null;
+  const normalizedOptions = options.map((option) => ({
+    option,
+    key: normalizeLanguageKey(option?.label ?? option?.value),
+  }));
+  const preferred = DEFAULT_SPANISH_LANGUAGE_KEYS.find((key) =>
+    normalizedOptions.some((entry) => entry.key === normalizeLanguageKey(key)),
+  );
+  if (preferred) {
+    return (
+      normalizedOptions.find((entry) => entry.key === normalizeLanguageKey(preferred))
+        ?.option ?? null
+    );
+  }
+  return (
+    normalizedOptions.find((entry) => entry.key?.startsWith('es'))?.option ??
+    normalizedOptions[0]?.option ??
+    null
+  );
 }
 
 function buildFileSegment(value, fallback) {
@@ -3956,6 +4022,7 @@ async function init() {
   });
 
   pingSupabase();
+  await loadDefaultGestionaAfterLogin();
 }
 if (loginButton) {
   loginButton.addEventListener('click', openLoginModal);
