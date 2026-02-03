@@ -2820,6 +2820,24 @@ async function openModelModal(table, label) {
     button.addEventListener('click', async () => {
       const selectedTable = pendingModelTable;
       if (!selectedTable) return;
+      if (!supabaseClient) {
+        showMessage('Configura Supabase antes de consultar tablas.', true);
+        return;
+      }
+      setLanguageOptions([], null);
+      const { options: languageOptions, error } = await fetchLanguageOptions(
+        selectedTable,
+        option,
+      );
+      if (error) {
+        showMessage(mapSupabaseError(error), true);
+        return;
+      }
+      if (languageOptions.length > 0) {
+        closeModelModal();
+        openLanguageModal(selectedTable, option, languageOptions);
+        return;
+      }
       openFilterConfirmModal(selectedTable, option, {
         title: '¿Cargar cuadro?',
         message: `¿Quieres cargar el cuadro ${option.label}?`,
@@ -2828,7 +2846,7 @@ async function openModelModal(table, label) {
         onConfirm: async (context) => {
           closeModelModal();
           if (context?.table) {
-            await handleModelSelection(context.table, option, { confirmFilter: false });
+            await loadRows(context.table, option, null);
           }
         },
       });

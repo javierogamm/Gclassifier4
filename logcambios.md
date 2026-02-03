@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.43.2
+
+- Al seleccionar un cuadro multiidioma desde el modal, se abre directamente el selector de idioma sin pasar por el botón “Cargar cuadro”.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.1
 
 - La confirmación de carga del cuadro se solicita antes de cerrar el modal de selección de modelo y, al aceptar, aplica el filtro y carga el acordeón.
