@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.42.7
+
+- Se añadió un modal de confirmación para filtrar cuadros sin idiomas tras seleccionar el modelo.
+- La selección de cuadros con idiomas ahora mantiene el flujo de selección de idioma antes de cargar resultados.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.6
 
 - Se movieron los botones “Seleccionar cuadro” y “¿Qué cuadro uso?” al encabezado en una línea dedicada, alineados y con tamaño duplicado.
