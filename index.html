@@ -57,17 +57,27 @@
         justify-items: end;
       }
 
-      .header-wizard {
+      .header-actions {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-left: auto;
+        width: 100%;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 16px;
+        flex-wrap: wrap;
       }
 
-      .wizard-cta {
-        font-size: 14px;
-        padding: 12px 24px;
-        border-radius: 6px;
+      .header-select-actions {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .header-action-button {
+        font-size: 16px;
+        padding: 18px 32px;
+        border-radius: 8px;
+        min-width: 220px;
       }
 
       .header-auth-actions {
@@ -1016,20 +1026,9 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.42.5</p>
+            <p class="version-text"><strong>Versión:</strong> v0.42.6</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
-        </div>
-        <div class="header-wizard">
-          <button
-            id="model-wizard-button"
-            class="secondary wizard-cta"
-            type="button"
-            data-auth-visible="true"
-            hidden
-          >
-            ¿Qué cuadro uso?
-          </button>
         </div>
         <div class="header-auth">
           <span id="login-user" class="muted">Sesión: sin iniciar</span>
@@ -1037,6 +1036,18 @@
             <button id="login-button" type="button">Login</button>
             <button id="logout-button" class="secondary" type="button" hidden>Salir</button>
           </div>
+        </div>
+        <div class="header-actions">
+          <div id="header-select-actions" class="header-select-actions"></div>
+          <button
+            id="model-wizard-button"
+            class="secondary header-action-button"
+            type="button"
+            data-auth-visible="true"
+            hidden
+          >
+            ¿Qué cuadro uso?
+          </button>
         </div>
       </header>
 

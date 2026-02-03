@@ -18,6 +18,7 @@ const registerSubmitEl = document.getElementById('register-submit');
 const loginStatusEl = document.getElementById('login-status');
 const messageEl = document.getElementById('message');
 const catalogEl = document.getElementById('catalog');
+const headerSelectActionsEl = document.getElementById('header-select-actions');
 const exportAllButton = document.getElementById('export-all');
 const resultsEl = document.getElementById('results');
 const vercelWarningEl = document.getElementById('vercel-warning');
@@ -646,6 +647,10 @@ function applyAccessControl() {
     } else {
       button.removeAttribute('title');
     }
+  });
+  document.querySelectorAll('[data-auth-admin="true"]').forEach((button) => {
+    button.hidden = !canEdit;
+    button.disabled = !canEdit;
   });
   if (!canEdit) {
     closeCreateModal();
@@ -1728,23 +1733,20 @@ function openLanguageModal(table, modelFilter, options) {
 
 function renderCatalog(entities) {
   catalogEl.innerHTML = '';
+  if (headerSelectActionsEl) {
+    headerSelectActionsEl.innerHTML = '';
+    headerSelectActionsEl.hidden = entities.length === 0;
+  }
   entities.forEach((entity) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'catalog-actions-group';
     wrapper.innerHTML = `
       <button
         class="secondary"
-        data-table="${entity.carga.table}"
-        data-label="${entity.label}"
-        aria-label="Seleccionar cuadro ${entity.label}"
-      >
-        Seleccionar cuadro
-      </button>
-      <button
-        class="secondary"
         type="button"
         data-actividades-table="${entity.carga.table}"
         data-label="${entity.label}"
+        data-auth-admin="true"
       >
         Actividades
       </button>
@@ -1767,10 +1769,24 @@ function renderCatalog(entities) {
         Exportar PDF
       </button>
     `;
+    const selectButton = document.createElement('button');
+    selectButton.className = 'secondary header-action-button';
+    selectButton.setAttribute('data-table', entity.carga.table);
+    selectButton.setAttribute('data-label', entity.label);
+    selectButton.setAttribute('aria-label', `Seleccionar cuadro ${entity.label}`);
+    selectButton.textContent = 'Seleccionar cuadro';
+    if (headerSelectActionsEl) {
+      headerSelectActionsEl.appendChild(selectButton);
+    } else {
+      wrapper.prepend(selectButton);
+    }
     catalogEl.appendChild(wrapper);
   });
 
-  catalogEl.querySelectorAll('button[data-table]').forEach((button) => {
+  const selectButtons = headerSelectActionsEl
+    ? headerSelectActionsEl.querySelectorAll('button[data-table]')
+    : catalogEl.querySelectorAll('button[data-table]');
+  selectButtons.forEach((button) => {
     button.addEventListener('click', async (event) => {
       const target = event.currentTarget;
       const table = target.getAttribute('data-table');
