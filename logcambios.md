@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.42.8
+
+- Se corrigió "Clasificación" en el título principal y en el modal de selección de cuadros.
+- El botón "Seleccionar cuadro" pasó a llamarse "Cargar cuadro" y se invirtió el orden con “¿Qué cuadro uso?” en el encabezado.
+- El asistente “¿Qué cuadro uso?” ahora pide confirmación final para cargar el cuadro y aplica el filtro al aceptar.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.7
 
 - Se añadió un modal de confirmación para filtrar cuadros sin idiomas tras seleccionar el modelo.

@@ -377,6 +377,7 @@ let modelWizardSelection = null;
 let pendingWizardModelSelection = null;
 let lastSelectedTable = null;
 let pendingFilterContext = null;
+let pendingFilterAction = null;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
 
@@ -788,10 +789,10 @@ function closeModelWizardModal() {
   }
 }
 
-async function applyWizardModelSelection(table, modelValue) {
+async function applyWizardModelSelection(table, modelValue, { confirmFilter = true } = {}) {
   if (!table || !modelValue) return;
   const normalizedModelValue = normalizeWizardModelValue(modelValue);
-  await handleModelSelection(table, buildModelOption(normalizedModelValue));
+  await handleModelSelection(table, buildModelOption(normalizedModelValue), { confirmFilter });
 }
 
 function openLoginModal() {
@@ -1719,6 +1720,7 @@ function closeFilterConfirmModal() {
   if (!filterConfirmModalEl) return;
   filterConfirmModalEl.hidden = true;
   pendingFilterContext = null;
+  pendingFilterAction = null;
   if (filterConfirmMessageEl) {
     filterConfirmMessageEl.textContent = '';
   }
@@ -1747,16 +1749,40 @@ function openLanguageModal(table, modelFilter, options) {
   languageModalEl.hidden = false;
 }
 
-function openFilterConfirmModal(table, modelFilter) {
+function openFilterConfirmModal(
+  table,
+  modelFilter,
+  {
+    title = '¿Filtrar cuadro?',
+    message,
+    confirmLabel = 'Sí, filtrar',
+    cancelLabel = 'Cancelar',
+    onConfirm,
+  } = {},
+) {
   if (!filterConfirmModalEl) return;
   pendingFilterContext = { table, modelFilter };
   if (filterConfirmTitleEl) {
-    filterConfirmTitleEl.textContent = '¿Filtrar cuadro?';
+    filterConfirmTitleEl.textContent = title;
   }
   if (filterConfirmMessageEl) {
     const modelLabel = modelFilter?.label || modelFilter?.value || 'modelo seleccionado';
-    filterConfirmMessageEl.textContent = `Se aplicará el filtro del cuadro ${modelLabel}.`;
+    filterConfirmMessageEl.textContent =
+      message || `Se aplicará el filtro del cuadro ${modelLabel}.`;
   }
+  if (filterConfirmYesEl) {
+    filterConfirmYesEl.textContent = confirmLabel;
+  }
+  if (filterConfirmNoEl) {
+    filterConfirmNoEl.textContent = cancelLabel;
+  }
+  pendingFilterAction =
+    onConfirm ||
+    (async (context) => {
+      if (context?.table) {
+        await loadRows(context.table, context.modelFilter, null);
+      }
+    });
   filterConfirmModalEl.hidden = false;
 }
 
@@ -1802,8 +1828,8 @@ function renderCatalog(entities) {
     selectButton.className = 'secondary header-action-button';
     selectButton.setAttribute('data-table', entity.carga.table);
     selectButton.setAttribute('data-label', entity.label);
-    selectButton.setAttribute('aria-label', `Seleccionar cuadro ${entity.label}`);
-    selectButton.textContent = 'Seleccionar cuadro';
+    selectButton.setAttribute('aria-label', `Cargar cuadro ${entity.label}`);
+    selectButton.textContent = 'Cargar cuadro';
     if (headerSelectActionsEl) {
       headerSelectActionsEl.appendChild(selectButton);
     } else {
@@ -2691,7 +2717,7 @@ function closeModelModal() {
   modelListEl.innerHTML = '';
 }
 
-async function handleModelSelection(table, modelOption) {
+async function handleModelSelection(table, modelOption, { confirmFilter = true } = {}) {
   if (!supabaseClient) {
     showMessage('Configura Supabase antes de consultar tablas.', true);
     return;
@@ -2706,7 +2732,11 @@ async function handleModelSelection(table, modelOption) {
     openLanguageModal(table, modelOption, options);
     return;
   }
-  openFilterConfirmModal(table, modelOption);
+  if (confirmFilter) {
+    openFilterConfirmModal(table, modelOption);
+    return;
+  }
+  await loadRows(table, modelOption, null);
 }
 
 async function openModelModal(table, label) {
@@ -2739,7 +2769,7 @@ async function openModelModal(table, label) {
     return;
   }
 
-  modelModalMessageEl.textContent = 'Selecciona Cuadro de Clasficación';
+  modelModalMessageEl.textContent = 'Selecciona Cuadro de Clasificación';
   modelOptions.forEach((option) => {
     const button = document.createElement('button');
     button.type = 'button';
@@ -3870,18 +3900,24 @@ if (modelWizardConfirmEl) {
       }
       return;
     }
-    const selectedModel = modelWizardSelection;
+    const selectedModel = normalizeWizardModelValue(modelWizardSelection);
+    const modelOption = buildModelOption(selectedModel);
+    const targetTable = activeTable || lastSelectedTable;
     closeModelWizardModal();
-    if (!activeTable) {
-      if (lastSelectedTable) {
-        await applyWizardModelSelection(lastSelectedTable, selectedModel);
-        return;
-      }
-      pendingWizardModelSelection = selectedModel;
-      showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
-      return;
-    }
-    await applyWizardModelSelection(activeTable, selectedModel);
+    openFilterConfirmModal(targetTable, modelOption, {
+      title: '¿Cargar cuadro?',
+      message: `¿Quieres cargar el cuadro ${modelOption.label}?`,
+      confirmLabel: 'Sí, cargar',
+      cancelLabel: 'Cancelar',
+      onConfirm: async () => {
+        if (targetTable) {
+          await applyWizardModelSelection(targetTable, selectedModel, { confirmFilter: false });
+          return;
+        }
+        pendingWizardModelSelection = selectedModel;
+        showMessage('Selecciona un cuadro del catálogo para aplicar el modelo sugerido.', false);
+      },
+    });
   });
 }
 modelModalCloseEl.addEventListener('click', closeModelModal);
@@ -3897,9 +3933,10 @@ if (filterConfirmNoEl) {
 if (filterConfirmYesEl) {
   filterConfirmYesEl.addEventListener('click', async () => {
     const context = pendingFilterContext;
+    const action = pendingFilterAction;
     closeFilterConfirmModal();
-    if (context?.table) {
-      await loadRows(context.table, context.modelFilter, null);
+    if (action) {
+      await action(context);
     }
   });
 }
