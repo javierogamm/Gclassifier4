@@ -241,6 +241,15 @@
         font-size: 14px;
       }
 
+      textarea {
+        border-radius: 4px;
+        border: 1px solid #5b6b84;
+        padding: 8px 10px;
+        font-size: 14px;
+        font-family: inherit;
+        resize: vertical;
+      }
+
       .entity {
         border: 1px solid #d0d7e2;
         border-radius: 8px;
@@ -1015,6 +1024,45 @@
         display: grid;
         gap: 8px;
       }
+
+      .tesauro-grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .tesauro-field {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .tesauro-output {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .tesauro-panel {
+        border: 1px solid #d0d7e2;
+        border-radius: 8px;
+        padding: 10px;
+        background: #f8fafc;
+      }
+
+      .tesauro-panel h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+      }
+
+      .tesauro-list {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 4px;
+        font-size: 13px;
+        color: #1f2a37;
+      }
     </style>
   </head>
   <body>
@@ -1026,7 +1074,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.42.6</p>
+            <p class="version-text"><strong>Versión:</strong> v0.42.7</p>
           </div>
           <h1>Gestión de Cuadros de Clasficación Gestiona</h1>
         </div>
@@ -1058,6 +1106,38 @@
       <div id="message" class="muted"></div>
 
       <main id="cuadros-view">
+        <section class="card">
+          <div class="section-header">
+            <h2>Tesauro</h2>
+            <div class="section-actions">
+              <button id="tesauro-transform" class="secondary" type="button">
+                Transformar condiciones a tesauros
+              </button>
+              <button id="tesauro-copypaste" type="button">COPYPASTE</button>
+            </div>
+          </div>
+          <div class="tesauro-grid">
+            <label class="tesauro-field">
+              JSON de flujo
+              <textarea
+                id="tesauro-flow-json"
+                rows="8"
+                placeholder="Pega aquí el JSON del flujo para crear nodos y tesauros."
+              ></textarea>
+            </label>
+            <div class="tesauro-output">
+              <div class="tesauro-panel">
+                <h3>Nodos detectados</h3>
+                <ul id="tesauro-nodes" class="tesauro-list"></ul>
+              </div>
+              <div class="tesauro-panel">
+                <h3>Tesauros creados</h3>
+                <ul id="tesauro-list" class="tesauro-list"></ul>
+              </div>
+            </div>
+          </div>
+          <div id="tesauro-status" class="form-status"></div>
+        </section>
         <section class="card card-flat">
           <div class="section-header">
             <h2>Gestión de cuadros</h2>

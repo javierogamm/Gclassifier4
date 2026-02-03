@@ -100,6 +100,12 @@ const activityPickerSearchEl = document.getElementById('activity-picker-search')
 const activityPickerStatusEl = document.getElementById('activity-picker-status');
 const activityPickerListEl = document.getElementById('activity-picker-list');
 const activityOptionsDatalistEl = document.getElementById('activity-options');
+const tesauroFlowInputEl = document.getElementById('tesauro-flow-json');
+const tesauroCopyPasteButton = document.getElementById('tesauro-copypaste');
+const tesauroTransformButton = document.getElementById('tesauro-transform');
+const tesauroStatusEl = document.getElementById('tesauro-status');
+const tesauroNodesListEl = document.getElementById('tesauro-nodes');
+const tesauroListEl = document.getElementById('tesauro-list');
 
 const PLACEHOLDER_PATTERNS = [
   'your-project',
@@ -2273,6 +2279,251 @@ function setCreateStatus(message, isError = false) {
   createStatusEl.className = isError ? 'form-status error' : 'form-status';
 }
 
+function setTesauroStatus(message, isError = false) {
+  if (!tesauroStatusEl) return;
+  tesauroStatusEl.textContent = message || '';
+  tesauroStatusEl.className = isError ? 'form-status error' : 'form-status';
+}
+
+function parseTesauroFlowInput() {
+  if (!tesauroFlowInputEl) return null;
+  const raw = tesauroFlowInputEl.value.trim();
+  if (!raw) {
+    setTesauroStatus('Pega un JSON de flujo para continuar.', true);
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    setTesauroStatus('El JSON del flujo no es válido.', true);
+    return null;
+  }
+}
+
+function extractNodesFromFlow(flow) {
+  if (!flow) return [];
+  const nodeKeyCandidates = ['nodes', 'nodos', 'estados', 'steps', 'pasos'];
+  if (Array.isArray(flow)) {
+    return flow;
+  }
+  if (typeof flow === 'object') {
+    for (const key of nodeKeyCandidates) {
+      if (Array.isArray(flow[key])) {
+        return flow[key];
+      }
+    }
+  }
+  const collected = [];
+  const seen = new Set();
+  const traverse = (value, depth = 0) => {
+    if (!value || depth > 6) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => traverse(item, depth + 1));
+      return;
+    }
+    if (typeof value !== 'object') return;
+    if (isNodeCandidate(value)) {
+      const identity = `${value.id ?? ''}-${value.codigo ?? ''}-${value.name ?? value.nombre ?? ''}`;
+      if (!seen.has(identity)) {
+        seen.add(identity);
+        collected.push(value);
+      }
+    }
+    Object.values(value).forEach((child) => traverse(child, depth + 1));
+  };
+  traverse(flow);
+  return collected;
+}
+
+function isNodeCandidate(node) {
+  if (!node || typeof node !== 'object') return false;
+  const labelKeys = ['label', 'nombre', 'name', 'title', 'titulo', 'texto'];
+  return labelKeys.some((key) => typeof node[key] === 'string' && node[key].trim().length > 0);
+}
+
+function formatNodeLabel(node, index) {
+  if (!node) return `Nodo ${index + 1}`;
+  const label =
+    node.label ||
+    node.nombre ||
+    node.name ||
+    node.title ||
+    node.titulo ||
+    node.texto ||
+    `Nodo ${index + 1}`;
+  const identity = node.id || node.codigo || node.key;
+  return identity ? `${label} (${identity})` : label;
+}
+
+function renderTesauroNodes(nodes) {
+  if (!tesauroNodesListEl) return;
+  tesauroNodesListEl.innerHTML = '';
+  if (!nodes || nodes.length === 0) {
+    const item = document.createElement('li');
+    item.textContent = 'No se detectaron nodos.';
+    tesauroNodesListEl.appendChild(item);
+    return;
+  }
+  nodes.forEach((node, index) => {
+    const item = document.createElement('li');
+    item.textContent = formatNodeLabel(node, index);
+    tesauroNodesListEl.appendChild(item);
+  });
+}
+
+function collectConditionsFromFlow(flow) {
+  const conditions = [];
+  const traverse = (value, depth = 0) => {
+    if (value === null || value === undefined || depth > 7) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => traverse(item, depth + 1));
+      return;
+    }
+    if (typeof value !== 'object') return;
+    Object.entries(value).forEach(([key, child]) => {
+      if (/condicion|condition/i.test(key)) {
+        if (Array.isArray(child)) {
+          child.forEach((item) => conditions.push(item));
+        } else if (child) {
+          conditions.push(child);
+        }
+      }
+      traverse(child, depth + 1);
+    });
+  };
+  traverse(flow);
+  return conditions;
+}
+
+function extractTesaurosFromConditions(conditions) {
+  const tesauros = [];
+  const seen = new Set();
+  const addTesauro = (value) => {
+    if (!value) return;
+    const normalized = String(value).trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    tesauros.push({ name: normalized });
+  };
+  const addFromValue = (value) => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => addFromValue(item));
+      return;
+    }
+    if (typeof value === 'object') {
+      if (typeof value.nombre === 'string') {
+        addTesauro(value.nombre);
+        return;
+      }
+      if (typeof value.name === 'string') {
+        addTesauro(value.name);
+        return;
+      }
+      return;
+    }
+    addTesauro(value);
+  };
+  (conditions || []).forEach((condition) => {
+    if (!condition || typeof condition !== 'object') return;
+    Object.entries(condition).forEach(([key, value]) => {
+      if (/tesauro|thesaurus/i.test(key)) {
+        addFromValue(value);
+      }
+    });
+    if (typeof condition.campo === 'string' && /tesauro|thesaurus/i.test(condition.campo)) {
+      addFromValue(condition.valor ?? condition.value);
+    }
+    if (typeof condition.tipo === 'string' && /tesauro|thesaurus/i.test(condition.tipo)) {
+      addFromValue(condition.valor ?? condition.value);
+    }
+  });
+  return tesauros;
+}
+
+function renderTesauroList(tesauros) {
+  if (!tesauroListEl) return;
+  tesauroListEl.innerHTML = '';
+  if (!tesauros || tesauros.length === 0) {
+    const item = document.createElement('li');
+    item.textContent = 'No se detectaron tesauros.';
+    tesauroListEl.appendChild(item);
+    return;
+  }
+  tesauros.forEach((tesauro) => {
+    const item = document.createElement('li');
+    item.textContent = tesauro.name;
+    tesauroListEl.appendChild(item);
+  });
+}
+
+async function persistTesauros(tesauros) {
+  if (!tesauros || tesauros.length === 0) {
+    return { created: 0, warning: 'No se encontraron tesauros en las condiciones.' };
+  }
+  if (!supabaseClient) {
+    return { created: tesauros.length, warning: 'Configura Supabase para guardar los tesauros.' };
+  }
+  const payload = tesauros.map((tesauro) => ({ nombre: tesauro.name }));
+  const tableCandidates = ['tesauros', 'tesauro'];
+  let lastError = null;
+  for (const table of tableCandidates) {
+    const { error } = await supabaseClient.from(table).insert(payload);
+    if (!error) {
+      return { created: payload.length, table };
+    }
+    lastError = error;
+    const message = error?.message || '';
+    if (!/does not exist|relation/i.test(message)) {
+      break;
+    }
+  }
+  return { created: 0, error: lastError };
+}
+
+async function handleTesauroTransform() {
+  const flow = parseTesauroFlowInput();
+  if (!flow) return;
+  const conditions = collectConditionsFromFlow(flow);
+  const tesauros = extractTesaurosFromConditions(conditions);
+  renderTesauroList(tesauros);
+  const result = await persistTesauros(tesauros);
+  if (result.error) {
+    setTesauroStatus(mapSupabaseError(result.error), true);
+    return;
+  }
+  if (result.warning) {
+    setTesauroStatus(result.warning, true);
+    return;
+  }
+  const tableLabel = result.table ? ` en ${result.table}` : '';
+  setTesauroStatus(`Tesauros creados${tableLabel}: ${result.created}.`, false);
+}
+
+async function handleTesauroCopyPaste() {
+  const flow = parseTesauroFlowInput();
+  if (!flow) return;
+  const nodes = extractNodesFromFlow(flow);
+  renderTesauroNodes(nodes);
+  const conditions = collectConditionsFromFlow(flow);
+  const tesauros = extractTesaurosFromConditions(conditions);
+  renderTesauroList(tesauros);
+  const result = await persistTesauros(tesauros);
+  if (result.error) {
+    setTesauroStatus(mapSupabaseError(result.error), true);
+    return;
+  }
+  if (result.warning) {
+    setTesauroStatus(result.warning, true);
+    return;
+  }
+  const tableLabel = result.table ? ` en ${result.table}` : '';
+  setTesauroStatus(
+    `COPYPASTE aplicado. Nodos: ${nodes.length} · Tesauros creados${tableLabel}: ${result.created}.`,
+    false,
+  );
+}
+
 function getUniqueCategorias(rows) {
   const categories = new Set();
   (rows || []).forEach((row) => {
@@ -3798,6 +4049,16 @@ if (loginButton) {
 }
 if (modelWizardButton) {
   modelWizardButton.addEventListener('click', openModelWizardModal);
+}
+if (tesauroTransformButton) {
+  tesauroTransformButton.addEventListener('click', () => {
+    handleTesauroTransform();
+  });
+}
+if (tesauroCopyPasteButton) {
+  tesauroCopyPasteButton.addEventListener('click', () => {
+    handleTesauroCopyPaste();
+  });
 }
 if (logoutButton) {
   logoutButton.addEventListener('click', () => {

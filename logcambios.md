@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.42.7
+
+- Se añadió el panel de Tesauro con entrada de JSON de flujo y visores de nodos/tesauros detectados.
+- El COPYPASTE ahora aplica automáticamente la transformación de condiciones a tesauros y los crea al procesar el flujo.
+- Se mantuvo el botón de “Transformar condiciones a tesauros” para ejecuciones manuales.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.6
 
 - Se movieron los botones “Seleccionar cuadro” y “¿Qué cuadro uso?” al encabezado en una línea dedicada, alineados y con tamaño duplicado.
