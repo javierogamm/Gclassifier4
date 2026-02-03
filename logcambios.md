@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.42.9
+
+- En el asistente “¿Qué cuadro uso?” la selección de idioma se realiza antes de solicitar la confirmación de filtrado.
+- Se actualizó la versión visible de la app.
+
 ## v0.42.8
 
 - Se corrigió "Clasificación" en el título principal y en el modal de selección de cuadros.

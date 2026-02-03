@@ -1739,10 +1739,19 @@ function openLanguageModal(table, modelFilter, options) {
     button.textContent = option.label;
     button.addEventListener('click', async () => {
       const context = pendingLanguageContext;
+      const modelLabel = context?.modelFilter?.label || context?.modelFilter?.value || 'modelo seleccionado';
       closeLanguageModal();
       if (!context?.table) return;
-      setLanguageOptions(context.options, option);
-      await loadRows(context.table, context.modelFilter, option);
+      openFilterConfirmModal(context.table, context.modelFilter, {
+        title: '¿Filtrar cuadro?',
+        message: `Has seleccionado el idioma ${option.label}. ¿Quieres filtrar el cuadro ${modelLabel}?`,
+        confirmLabel: 'Sí, filtrar',
+        cancelLabel: 'Cancelar',
+        onConfirm: async () => {
+          setLanguageOptions(context.options, option);
+          await loadRows(context.table, context.modelFilter, option);
+        },
+      });
     });
     languageListEl.appendChild(button);
   });
