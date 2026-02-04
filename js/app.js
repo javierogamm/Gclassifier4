@@ -1196,6 +1196,7 @@ function buildActivityOptionsFromRows(rows) {
   const sampleRow = rows?.[0] || {};
   const baseFields = fields.length ? fields : Object.keys(sampleRow);
   const fieldMap = getActivityFieldMapFromData(baseFields, sampleRow);
+  const seen = new Set();
 
   return (rows || [])
     .map((row) => {
@@ -1206,7 +1207,13 @@ function buildActivityOptionsFromRows(rows) {
         code,
       };
     })
-    .filter((option) => option.name || option.code)
+    .filter((option) => {
+      if (!option.name && !option.code) return false;
+      const key = `${normalizeMatchValue(option.code)}::${normalizeMatchValue(option.name)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 }
 
@@ -1378,13 +1385,28 @@ function rowMatchesField(row, fields, filterValue) {
 }
 
 function rowMatchesSearchFilters(row, normalizedFilters) {
+  const hasCodigo = Boolean(normalizedFilters.codigoSerie);
+  const hasTitulo = Boolean(normalizedFilters.tituloSerie);
+  const matchCodigo = rowMatchesField(
+    row,
+    ['codigo_serie', 'cod', 'nombre_serie'],
+    normalizedFilters.codigoSerie,
+  );
+  const matchTitulo = rowMatchesField(
+    row,
+    ['titulo_serie', 'nombre_entidad', 'nombre_serie'],
+    normalizedFilters.tituloSerie,
+  );
+  const matchesCodigoOrTitulo =
+    hasCodigo && hasTitulo
+      ? matchCodigo || matchTitulo
+      : hasCodigo
+        ? matchCodigo
+        : hasTitulo
+          ? matchTitulo
+          : true;
   return (
-    rowMatchesField(row, ['codigo_serie', 'cod', 'nombre_serie'], normalizedFilters.codigoSerie) &&
-    rowMatchesField(
-      row,
-      ['titulo_serie', 'nombre_entidad', 'nombre_serie'],
-      normalizedFilters.tituloSerie,
-    ) &&
+    matchesCodigoOrTitulo &&
     rowMatchesField(row, ['categoria', 'actividad'], normalizedFilters.categoria)
   );
 }
@@ -3412,8 +3434,24 @@ function renderActividadesAccordion() {
   }
 
   const fieldMap = getActivityFieldMap();
+  const uniqueRows = [];
+  const seen = new Set();
   actividadesRows.forEach((row) => {
     const rowData = buildActivityRowData(row, fieldMap);
+    const codeKey = normalizeMatchValue(rowData.actividadValue);
+    const nameKey = normalizeMatchValue(rowData.actividadName);
+    let key = `${codeKey}::${nameKey}`;
+    if (!codeKey && !nameKey) {
+      key = rowData.identityField && rowData.identityValue
+        ? `${rowData.identityField}:${rowData.identityValue}`
+        : `row-${uniqueRows.length}`;
+    }
+    if (seen.has(key)) return;
+    seen.add(key);
+    uniqueRows.push({ row, rowData });
+  });
+
+  uniqueRows.forEach(({ row, rowData }) => {
     const details = document.createElement('details');
     details.open = false;
     setActivityRowDataset(details, rowData);

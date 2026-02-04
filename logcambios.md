@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.43.7
+
+- La vista de gestión de actividades ahora deduplica registros para mostrar una actividad por fila.
+- El buscador permite filtrar por código o por nombre sin exigir coincidencia en ambos campos.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.6
 
 - El detalle de serie ahora muestra todas las actividades asociadas en una lista editable.
