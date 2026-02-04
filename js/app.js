@@ -1196,6 +1196,7 @@ function buildActivityOptionsFromRows(rows) {
   const sampleRow = rows?.[0] || {};
   const baseFields = fields.length ? fields : Object.keys(sampleRow);
   const fieldMap = getActivityFieldMapFromData(baseFields, sampleRow);
+  const seen = new Set();
 
   return (rows || [])
     .map((row) => {
@@ -1206,7 +1207,13 @@ function buildActivityOptionsFromRows(rows) {
         code,
       };
     })
-    .filter((option) => option.name || option.code)
+    .filter((option) => {
+      if (!option.name && !option.code) return false;
+      const key = `${normalizeMatchValue(option.code)}::${normalizeMatchValue(option.name)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 }
 
@@ -1378,13 +1385,28 @@ function rowMatchesField(row, fields, filterValue) {
 }
 
 function rowMatchesSearchFilters(row, normalizedFilters) {
+  const hasCodigo = Boolean(normalizedFilters.codigoSerie);
+  const hasTitulo = Boolean(normalizedFilters.tituloSerie);
+  const matchCodigo = rowMatchesField(
+    row,
+    ['codigo_serie', 'cod', 'nombre_serie'],
+    normalizedFilters.codigoSerie,
+  );
+  const matchTitulo = rowMatchesField(
+    row,
+    ['titulo_serie', 'nombre_entidad', 'nombre_serie'],
+    normalizedFilters.tituloSerie,
+  );
+  const matchesCodigoOrTitulo =
+    hasCodigo && hasTitulo
+      ? matchCodigo || matchTitulo
+      : hasCodigo
+        ? matchCodigo
+        : hasTitulo
+          ? matchTitulo
+          : true;
   return (
-    rowMatchesField(row, ['codigo_serie', 'cod', 'nombre_serie'], normalizedFilters.codigoSerie) &&
-    rowMatchesField(
-      row,
-      ['titulo_serie', 'nombre_entidad', 'nombre_serie'],
-      normalizedFilters.tituloSerie,
-    ) &&
+    matchesCodigoOrTitulo &&
     rowMatchesField(row, ['categoria', 'actividad'], normalizedFilters.categoria)
   );
 }
@@ -3412,8 +3434,29 @@ function renderActividadesAccordion() {
   }
 
   const fieldMap = getActivityFieldMap();
+  const rowMap = new Map();
   actividadesRows.forEach((row) => {
     const rowData = buildActivityRowData(row, fieldMap);
+    const nameKey = normalizeMatchValue(rowData.actividadName);
+    const codeKey = normalizeMatchValue(rowData.actividadValue);
+    const key = nameKey || codeKey || (rowData.identityField && rowData.identityValue
+      ? `${rowData.identityField}:${rowData.identityValue}`
+      : `row-${rowMap.size}`);
+    const existing = rowMap.get(key);
+    if (!existing) {
+      rowMap.set(key, { row, rowData });
+      return;
+    }
+    const existingHasName = Boolean(normalizeMatchValue(existing.rowData.actividadName));
+    const currentHasName = Boolean(nameKey);
+    const existingHasLink = Boolean(normalizeMatchValue(existing.rowData.actividadLinkValue));
+    const currentHasLink = Boolean(normalizeMatchValue(rowData.actividadLinkValue));
+    if ((!existingHasName && currentHasName) || (!existingHasLink && currentHasLink)) {
+      rowMap.set(key, { row, rowData });
+    }
+  });
+
+  Array.from(rowMap.values()).forEach(({ row, rowData }) => {
     const details = document.createElement('details');
     details.open = false;
     setActivityRowDataset(details, rowData);
@@ -3469,11 +3512,7 @@ function renderActividadesAccordion() {
     details.addEventListener('toggle', () => {
       if (!details.open) return;
       if (linkedTable.dataset.loaded === 'true') return;
-      loadLinkedSeriesForActivity(
-        rowData.actividadLinkValue || rowData.actividadName || rowData.actividadValue,
-        linkedStatus,
-        linkedTable,
-      );
+      loadLinkedSeriesForActivity(rowData, linkedStatus, linkedTable);
     });
 
     activitiesAccordionEl.appendChild(details);
@@ -3725,24 +3764,34 @@ function renderLinkedSeriesTable(rows, tableEl) {
   tableEl.appendChild(table);
 }
 
-async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
+async function loadLinkedSeriesForActivity(activityData, statusEl, tableEl) {
   if (!supabaseClient) {
     updateLinkedSeriesStatus(statusEl, 'Configura Supabase antes de consultar series vinculadas.', true);
     renderLinkedSeriesTable([], tableEl);
     return;
   }
-  const actividadMatchValue = normalizeMatchValue(actividadValue);
-  if (!actividadMatchValue) {
+  const candidateValues = [
+    activityData?.actividadLinkValue,
+    activityData?.actividadName,
+    activityData?.actividadValue,
+  ]
+    .map((value) => normalizeMatchValue(value))
+    .filter((value) => value.length > 0);
+  const uniqueCandidates = Array.from(new Set(candidateValues));
+  if (!uniqueCandidates.length) {
     updateLinkedSeriesStatus(statusEl, 'No se pudo identificar la actividad para vinculación.', true);
     renderLinkedSeriesTable([], tableEl);
     return;
   }
   updateLinkedSeriesStatus(statusEl, 'Consultando series vinculadas...', false);
   const modelFilter = resolveModelFilter();
-  let query = supabaseClient
-    .from('series_vinculacion')
-    .select('*')
-    .ilike('actividad', `${actividadMatchValue}%`);
+  let query = supabaseClient.from('series_vinculacion').select('*');
+  if (uniqueCandidates.length === 1) {
+    query = query.ilike('actividad', `${uniqueCandidates[0]}%`);
+  } else {
+    const orFilters = uniqueCandidates.map((value) => `actividad.ilike.${value}%`).join(',');
+    query = query.or(orFilters);
+  }
   query = applyModelFilterToQuery(query, modelFilter);
   const { data, error } = await query;
   if (error) {
@@ -3750,7 +3799,9 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
     renderLinkedSeriesTable([], tableEl);
     return;
   }
-  const matchedRows = (data || []).filter((row) => areMatchValues(row?.actividad, actividadMatchValue));
+  const matchedRows = (data || []).filter((row) =>
+    uniqueCandidates.some((candidate) => areMatchValues(row?.actividad, candidate)),
+  );
   if (!matchedRows.length) {
     updateLinkedSeriesStatus(statusEl, 'Series vinculadas: 0', false);
     renderLinkedSeriesTable([], tableEl);
