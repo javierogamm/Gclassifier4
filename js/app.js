@@ -473,7 +473,36 @@ function buildLinkedSeriesKey(codeValue, modelValue) {
   return `${codeKey}::${modelKey}`;
 }
 
-async function fetchActividadForCodigoSerie(codigoSerie, modelValue) {
+function normalizeActivityValue(value) {
+  return trimTrailingSpaces(value ?? '');
+}
+
+function buildUniqueActivityList(activities) {
+  const seen = new Set();
+  const result = [];
+  activities.forEach((activity) => {
+    const normalized = normalizeMatchValue(activity);
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    result.push(activity);
+  });
+  return result;
+}
+
+function parseActivityList(value) {
+  if (!value) return [];
+  const items = String(value)
+    .split('\n')
+    .map((item) => normalizeActivityValue(item))
+    .filter((item) => item.length > 0);
+  return buildUniqueActivityList(items);
+}
+
+function buildActivityListValue(activities) {
+  return activities.join('\n');
+}
+
+async function fetchActividadesForCodigoSerie(codigoSerie, modelValue) {
   if (!supabaseClient || !codigoSerie) return null;
   const vinculacionTable = getVinculacionTableForActive();
   if (!vinculacionTable) return null;
@@ -483,8 +512,7 @@ async function fetchActividadForCodigoSerie(codigoSerie, modelValue) {
   let query = supabaseClient
     .from(vinculacionTable)
     .select(vinculacionFieldMap.actividad)
-    .eq(vinculacionFieldMap.codigoSerie, codigoSerie)
-    .limit(1);
+    .eq(vinculacionFieldMap.codigoSerie, codigoSerie);
   query = applyModelFilterToQuery(query, modelFilter);
   const { data, error } = await query;
 
@@ -492,7 +520,10 @@ async function fetchActividadForCodigoSerie(codigoSerie, modelValue) {
     return null;
   }
 
-  return data?.[0]?.[vinculacionFieldMap.actividad] ?? null;
+  const activities = (data || [])
+    .map((row) => normalizeActivityValue(row?.[vinculacionFieldMap.actividad]))
+    .filter((value) => value.length > 0);
+  return buildUniqueActivityList(activities);
 }
 
 function getActividadesTableForActive() {
@@ -516,6 +547,12 @@ function getVinculacionFieldMap() {
     codigoSerie: pickActivityField(VINCULACION_FIELD_CANDIDATES.codigoSerie, baseFields, sampleRow),
     actividad: pickActivityField(VINCULACION_FIELD_CANDIDATES.actividad, baseFields, sampleRow),
   };
+}
+
+function getVinculacionModelField() {
+  const entity = activeCatalog?.entities?.find((item) => item?.carga?.table === activeTable);
+  const fields = entity?.vinculacion?.fields ?? [];
+  return fields.includes('modelo') ? 'modelo' : null;
 }
 
 function setStatus(state, text) {
@@ -2986,13 +3023,17 @@ async function openDetailDrawer(row, title) {
         : activeModelFilter?.value;
   detailDrawerEl.dataset.modelo =
     resolvedModelValue === null ? NULL_MODEL_TOKEN : resolvedModelValue ?? '';
-  const actividad = await fetchActividadForCodigoSerie(codigoSerie, resolvedModelValue);
+  const actividades = await fetchActividadesForCodigoSerie(codigoSerie, resolvedModelValue);
   const fields = [
     { key: 'posicion', label: 'posicion', value: row?.posicion },
     { key: 'codigo_serie', label: 'codigo_serie', value: codigoSerie },
     { key: 'titulo_serie', label: 'titulo_serie', value: row?.titulo_serie },
     { key: 'categoria', label: 'categoria', value: row?.categoria },
-    { key: 'actividad', label: 'actividad', value: actividad },
+    {
+      key: 'actividad',
+      label: 'actividades (una por línea)',
+      value: buildActivityListValue(actividades ?? []),
+    },
     { key: 'last_change', label: 'last_change', value: row?.last_change, readOnly: true },
   ];
 
@@ -3002,9 +3043,14 @@ async function openDetailDrawer(row, title) {
     const labelEl = document.createElement('span');
     labelEl.className = 'detail-label';
     labelEl.textContent = label;
-    const input = document.createElement('input');
+    const input = document.createElement(key === 'actividad' ? 'textarea' : 'input');
     input.className = 'detail-input';
-    input.type = 'text';
+    if (key !== 'actividad') {
+      input.type = 'text';
+    } else {
+      input.classList.add('detail-textarea');
+      input.rows = 4;
+    }
     input.name = key;
     input.value = value === null || value === undefined ? '' : String(value);
     input.placeholder = key === 'posicion' ? 'Raíz' : '—';
@@ -3033,9 +3079,8 @@ async function openDetailDrawer(row, title) {
       fieldWrap.appendChild(positionButton);
       item.appendChild(fieldWrap);
     } else if (key === 'actividad') {
-      input.setAttribute('list', 'activity-options');
       input.addEventListener('blur', () => {
-        input.value = trimTrailingSpaces(input.value);
+        input.value = buildActivityListValue(parseActivityList(input.value));
       });
       item.appendChild(input);
     } else {
@@ -3839,10 +3884,11 @@ async function saveDetailChanges() {
     return;
   }
 
-  const inputs = Array.from(detailDrawerBodyEl.querySelectorAll('input[name]'));
+  const inputs = Array.from(detailDrawerBodyEl.querySelectorAll('input[name], textarea[name]'));
   const updates = {};
   let actividadUpdate = null;
   let actividadChanged = false;
+  let actividadOriginalList = [];
 
   inputs.forEach((input) => {
     const key = input.name;
@@ -3852,8 +3898,16 @@ async function saveDetailChanges() {
       return;
     }
     if (key === 'actividad') {
-      if (currentValue !== originalValue) {
-        actividadUpdate = currentValue;
+      const currentList = parseActivityList(currentValue);
+      const originalList = parseActivityList(originalValue);
+      actividadOriginalList = originalList;
+      const normalizedCurrent = new Set(currentList.map((item) => normalizeMatchValue(item)));
+      const normalizedOriginal = new Set(originalList.map((item) => normalizeMatchValue(item)));
+      const hasDiff =
+        normalizedCurrent.size !== normalizedOriginal.size ||
+        [...normalizedCurrent].some((item) => !normalizedOriginal.has(item));
+      if (hasDiff) {
+        actividadUpdate = currentList;
         actividadChanged = true;
       }
       return;
@@ -3906,14 +3960,48 @@ async function saveDetailChanges() {
     if (shouldUpdateActividad) {
       const modelValue = parseModelDatasetValue(detailDrawerEl.dataset.modelo);
       const modelFilter = resolveModelFilter(modelValue);
-      let vinculacionQuery = supabaseClient
-        .from(vinculacionTable)
-        .update({ [vinculacionFieldMap.actividad]: actividadUpdate })
-        .eq(vinculacionFieldMap.codigoSerie, codigoSerie);
-      vinculacionQuery = applyModelFilterToQuery(vinculacionQuery, modelFilter);
-      const { error } = await vinculacionQuery;
-      if (error) {
-        throw error;
+      const modelField = getVinculacionModelField();
+      const normalizedOriginal = new Set(
+        actividadOriginalList.map((item) => normalizeMatchValue(item)),
+      );
+      const normalizedCurrent = new Set(
+        actividadUpdate.map((item) => normalizeMatchValue(item)),
+      );
+      const toAdd = actividadUpdate.filter(
+        (item) => !normalizedOriginal.has(normalizeMatchValue(item)),
+      );
+      const toRemove = actividadOriginalList.filter(
+        (item) => !normalizedCurrent.has(normalizeMatchValue(item)),
+      );
+
+      if (toRemove.length > 0) {
+        let deleteQuery = supabaseClient
+          .from(vinculacionTable)
+          .delete()
+          .eq(vinculacionFieldMap.codigoSerie, codigoSerie)
+          .in(vinculacionFieldMap.actividad, toRemove);
+        deleteQuery = applyModelFilterToQuery(deleteQuery, modelFilter);
+        const { error } = await deleteQuery;
+        if (error) {
+          throw error;
+        }
+      }
+
+      if (toAdd.length > 0) {
+        const payloadBase = {
+          [vinculacionFieldMap.codigoSerie]: codigoSerie,
+        };
+        if (modelField) {
+          payloadBase[modelField] = modelValue ?? null;
+        }
+        const insertPayload = toAdd.map((activity) => ({
+          ...payloadBase,
+          [vinculacionFieldMap.actividad]: activity,
+        }));
+        const { error } = await supabaseClient.from(vinculacionTable).insert(insertPayload);
+        if (error) {
+          throw error;
+        }
       }
     }
 
