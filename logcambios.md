@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.43.6
+
+- El detalle de serie ahora muestra todas las actividades asociadas en una lista editable.
+- Se pueden añadir o eliminar múltiples actividades vinculadas desde el detalle de la serie.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.5
 
 - Tras iniciar sesión, el acordeón carga por defecto el modelo GESTIONA en castellano.
