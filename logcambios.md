@@ -1,5 +1,10 @@
 # Log de cambios
 
+## v0.43.8
+
+- Al abrir una actividad en el acordeón se listan todas las series vinculadas usando nombre y código como referencia.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.7
 
 - La vista de gestión de actividades ahora deduplica registros para mostrar una actividad por fila.

@@ -3434,24 +3434,29 @@ function renderActividadesAccordion() {
   }
 
   const fieldMap = getActivityFieldMap();
-  const uniqueRows = [];
-  const seen = new Set();
+  const rowMap = new Map();
   actividadesRows.forEach((row) => {
     const rowData = buildActivityRowData(row, fieldMap);
-    const codeKey = normalizeMatchValue(rowData.actividadValue);
     const nameKey = normalizeMatchValue(rowData.actividadName);
-    let key = `${codeKey}::${nameKey}`;
-    if (!codeKey && !nameKey) {
-      key = rowData.identityField && rowData.identityValue
-        ? `${rowData.identityField}:${rowData.identityValue}`
-        : `row-${uniqueRows.length}`;
+    const codeKey = normalizeMatchValue(rowData.actividadValue);
+    const key = nameKey || codeKey || (rowData.identityField && rowData.identityValue
+      ? `${rowData.identityField}:${rowData.identityValue}`
+      : `row-${rowMap.size}`);
+    const existing = rowMap.get(key);
+    if (!existing) {
+      rowMap.set(key, { row, rowData });
+      return;
     }
-    if (seen.has(key)) return;
-    seen.add(key);
-    uniqueRows.push({ row, rowData });
+    const existingHasName = Boolean(normalizeMatchValue(existing.rowData.actividadName));
+    const currentHasName = Boolean(nameKey);
+    const existingHasLink = Boolean(normalizeMatchValue(existing.rowData.actividadLinkValue));
+    const currentHasLink = Boolean(normalizeMatchValue(rowData.actividadLinkValue));
+    if ((!existingHasName && currentHasName) || (!existingHasLink && currentHasLink)) {
+      rowMap.set(key, { row, rowData });
+    }
   });
 
-  uniqueRows.forEach(({ row, rowData }) => {
+  Array.from(rowMap.values()).forEach(({ row, rowData }) => {
     const details = document.createElement('details');
     details.open = false;
     setActivityRowDataset(details, rowData);
@@ -3507,11 +3512,7 @@ function renderActividadesAccordion() {
     details.addEventListener('toggle', () => {
       if (!details.open) return;
       if (linkedTable.dataset.loaded === 'true') return;
-      loadLinkedSeriesForActivity(
-        rowData.actividadLinkValue || rowData.actividadName || rowData.actividadValue,
-        linkedStatus,
-        linkedTable,
-      );
+      loadLinkedSeriesForActivity(rowData, linkedStatus, linkedTable);
     });
 
     activitiesAccordionEl.appendChild(details);
@@ -3763,24 +3764,34 @@ function renderLinkedSeriesTable(rows, tableEl) {
   tableEl.appendChild(table);
 }
 
-async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
+async function loadLinkedSeriesForActivity(activityData, statusEl, tableEl) {
   if (!supabaseClient) {
     updateLinkedSeriesStatus(statusEl, 'Configura Supabase antes de consultar series vinculadas.', true);
     renderLinkedSeriesTable([], tableEl);
     return;
   }
-  const actividadMatchValue = normalizeMatchValue(actividadValue);
-  if (!actividadMatchValue) {
+  const candidateValues = [
+    activityData?.actividadLinkValue,
+    activityData?.actividadName,
+    activityData?.actividadValue,
+  ]
+    .map((value) => normalizeMatchValue(value))
+    .filter((value) => value.length > 0);
+  const uniqueCandidates = Array.from(new Set(candidateValues));
+  if (!uniqueCandidates.length) {
     updateLinkedSeriesStatus(statusEl, 'No se pudo identificar la actividad para vinculación.', true);
     renderLinkedSeriesTable([], tableEl);
     return;
   }
   updateLinkedSeriesStatus(statusEl, 'Consultando series vinculadas...', false);
   const modelFilter = resolveModelFilter();
-  let query = supabaseClient
-    .from('series_vinculacion')
-    .select('*')
-    .ilike('actividad', `${actividadMatchValue}%`);
+  let query = supabaseClient.from('series_vinculacion').select('*');
+  if (uniqueCandidates.length === 1) {
+    query = query.ilike('actividad', `${uniqueCandidates[0]}%`);
+  } else {
+    const orFilters = uniqueCandidates.map((value) => `actividad.ilike.${value}%`).join(',');
+    query = query.or(orFilters);
+  }
   query = applyModelFilterToQuery(query, modelFilter);
   const { data, error } = await query;
   if (error) {
@@ -3788,7 +3799,9 @@ async function loadLinkedSeriesForActivity(actividadValue, statusEl, tableEl) {
     renderLinkedSeriesTable([], tableEl);
     return;
   }
-  const matchedRows = (data || []).filter((row) => areMatchValues(row?.actividad, actividadMatchValue));
+  const matchedRows = (data || []).filter((row) =>
+    uniqueCandidates.some((candidate) => areMatchValues(row?.actividad, candidate)),
+  );
   if (!matchedRows.length) {
     updateLinkedSeriesStatus(statusEl, 'Series vinculadas: 0', false);
     renderLinkedSeriesTable([], tableEl);
