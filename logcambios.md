@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.44.0
+
+- El buscador de actividades ahora aplica el filtro con un botón "Buscar" y permite ejecutar la búsqueda con Enter.
+- La búsqueda de actividades normaliza mayúsculas y tildes para comparar por coincidencia contenida.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.9
 
 - En la gestión de actividades se reemplazó el formulario de alta por un buscador con limpieza rápida y contador de resultados.

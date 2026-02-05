@@ -88,6 +88,7 @@ const backToCuadrosButton = document.getElementById('back-to-cuadros');
 const activitiesMessageEl = document.getElementById('activities-message');
 const activitiesSearchInputEl = document.getElementById('activities-search-input');
 const activitiesSearchStatusEl = document.getElementById('activities-search-status');
+const activitiesSearchButtonEl = document.getElementById('activities-search-button');
 const activitiesSearchClearEl = document.getElementById('activities-search-clear');
 const activitiesAccordionEl = document.getElementById('activities-accordion');
 const activitiesExpandAllButton = document.getElementById('activities-expand-all');
@@ -381,6 +382,7 @@ let pendingFilterAction = null;
 let hasAutoLoadedDefaultModel = false;
 const activityOptionsCache = new Map();
 let activityPickerOptions = [];
+let activitiesSearchQuery = '';
 
 const ACTIVITY_FIELD_CANDIDATES = {
   actividadCode: ['codigo_actividad', 'cod_actividad', 'codigo'],
@@ -1156,7 +1158,11 @@ function normalizeInputValue(value) {
 
 function normalizeMatchValue(value) {
   if (value === null || value === undefined) return '';
-  return String(value).trim();
+  return String(value)
+    .trim()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
 }
 
 function trimTrailingSpaces(value) {
@@ -3424,7 +3430,7 @@ function renderActividadesAccordion() {
   }
 
   const fieldMap = getActivityFieldMap();
-  const query = normalizeMatchValue(activitiesSearchInputEl?.value ?? '');
+  const query = activitiesSearchQuery;
   const filteredRows = query
     ? actividadesRows.filter((row) => {
         const code = normalizeMatchValue(row?.[fieldMap.actividadCode]);
@@ -3537,6 +3543,11 @@ function renderActividadesAccordion() {
   } else {
     updateActivitiesSearchStatus('', false);
   }
+}
+
+function applyActivitiesSearch() {
+  activitiesSearchQuery = normalizeMatchValue(activitiesSearchInputEl?.value ?? '');
+  renderActividadesView();
 }
 
 function getEditableActivityFields() {
@@ -3894,6 +3905,7 @@ async function openActivitiesView(table, label) {
   if (activitiesSearchInputEl) {
     activitiesSearchInputEl.value = '';
   }
+  activitiesSearchQuery = '';
   updateActivitiesSearchStatus('', false);
   showActivitiesMessage(`Gestión de actividades para ${label}.`, false);
   await loadActividades(getActividadesTableForActive());
@@ -4255,8 +4267,17 @@ backToCuadrosButton.addEventListener('click', () => {
   showCuadrosView();
 });
 if (activitiesSearchInputEl) {
-  activitiesSearchInputEl.addEventListener('input', () => {
-    renderActividadesView();
+  activitiesSearchInputEl.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      applyActivitiesSearch();
+    }
+  });
+}
+
+if (activitiesSearchButtonEl) {
+  activitiesSearchButtonEl.addEventListener('click', () => {
+    applyActivitiesSearch();
   });
 }
 
@@ -4264,6 +4285,7 @@ if (activitiesSearchClearEl) {
   activitiesSearchClearEl.addEventListener('click', () => {
     if (activitiesSearchInputEl) {
       activitiesSearchInputEl.value = '';
+      activitiesSearchQuery = '';
       renderActividadesView();
       activitiesSearchInputEl.focus();
     }
