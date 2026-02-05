@@ -811,29 +811,29 @@
         margin-bottom: 12px;
       }
 
-      .activities-form {
+      .activities-search {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: minmax(240px, 1fr);
         gap: 12px;
         align-items: end;
         margin-bottom: 16px;
       }
 
-      .activities-form label {
+      .activities-search label {
         display: grid;
         gap: 6px;
         font-size: 14px;
         font-weight: 600;
       }
 
-      .activities-form input {
+      .activities-search input {
         border-radius: 4px;
         border: 1px solid #5b6b84;
         padding: 8px 10px;
         font-size: 14px;
       }
 
-      .activities-actions {
+      .activities-search-meta {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -1032,7 +1032,7 @@
               <span id="status-icon">⚠️</span>
               <span id="status-text">Esperando configuración</span>
             </div>
-            <p class="version-text"><strong>Versión:</strong> v0.43.8</p>
+            <p class="version-text"><strong>Versión:</strong> v0.43.9</p>
           </div>
           <h1>Gestión de Cuadros de Clasificación Gestiona</h1>
         </div>
@@ -1137,20 +1137,21 @@
           <button id="activities-expand-all" class="secondary" type="button">Desplegar todo</button>
           <button id="activities-collapse-all" class="secondary" type="button">Contraer todo</button>
         </div>
-        <form id="activity-create-form" class="activities-form">
+        <div class="activities-search" aria-label="Buscador de actividades">
           <label>
-            Código de actividad
-            <input id="activity-create-codigo-actividad" type="text" placeholder="Ej: ACT-001" required />
+            Buscar actividad
+            <input
+              id="activities-search-input"
+              type="search"
+              placeholder="Buscar por código o nombre"
+              autocomplete="off"
+            />
           </label>
-          <label>
-            Nombre de actividad
-            <input id="activity-create-nombre" type="text" placeholder="Ej: Archivo" required />
-          </label>
-          <div class="activities-actions">
-            <button id="activity-create-submit" type="submit">Guardar actividad</button>
-            <span id="activity-create-status" class="form-status"></span>
+          <div class="activities-search-meta">
+            <span id="activities-search-status" class="form-status"></span>
+            <button id="activities-search-clear" class="secondary" type="button">Limpiar</button>
           </div>
-        </form>
+        </div>
         <div id="activities-accordion" class="activities-accordion"></div>
       </section>
     </div>
