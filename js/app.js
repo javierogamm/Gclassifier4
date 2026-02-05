@@ -86,11 +86,9 @@ const cuadrosViewEl = document.getElementById('cuadros-view');
 const activitiesViewEl = document.getElementById('activities-view');
 const backToCuadrosButton = document.getElementById('back-to-cuadros');
 const activitiesMessageEl = document.getElementById('activities-message');
-const activityCreateFormEl = document.getElementById('activity-create-form');
-const activityCreateCodigoActividadEl = document.getElementById('activity-create-codigo-actividad');
-const activityCreateNombreEl = document.getElementById('activity-create-nombre');
-const activityCreateSubmitButton = document.getElementById('activity-create-submit');
-const activityCreateStatusEl = document.getElementById('activity-create-status');
+const activitiesSearchInputEl = document.getElementById('activities-search-input');
+const activitiesSearchStatusEl = document.getElementById('activities-search-status');
+const activitiesSearchClearEl = document.getElementById('activities-search-clear');
 const activitiesAccordionEl = document.getElementById('activities-accordion');
 const activitiesExpandAllButton = document.getElementById('activities-expand-all');
 const activitiesCollapseAllButton = document.getElementById('activities-collapse-all');
@@ -663,15 +661,6 @@ function applyAccessControl() {
         input.readOnly = !canEdit || input.name === 'last_change';
       }
     });
-  }
-  if (activityCreateCodigoActividadEl) {
-    activityCreateCodigoActividadEl.disabled = !canEdit;
-  }
-  if (activityCreateNombreEl) {
-    activityCreateNombreEl.disabled = !canEdit;
-  }
-  if (activityCreateSubmitButton) {
-    activityCreateSubmitButton.disabled = !canEdit;
   }
   if (activityEditSubmitButton) {
     activityEditSubmitButton.disabled = !canEdit;
@@ -3309,10 +3298,10 @@ async function handleHistoryRevert(historyRow) {
   }
 }
 
-function updateActivityCreateStatus(message, isError = false) {
-  if (!activityCreateStatusEl) return;
-  activityCreateStatusEl.textContent = message || '';
-  activityCreateStatusEl.className = isError ? 'form-status error' : 'form-status';
+function updateActivitiesSearchStatus(message, isError = false) {
+  if (!activitiesSearchStatusEl) return;
+  activitiesSearchStatusEl.textContent = message || '';
+  activitiesSearchStatusEl.className = isError ? 'form-status error' : 'form-status';
 }
 
 function showActivitiesView() {
@@ -3430,12 +3419,22 @@ function renderActividadesAccordion() {
     emptyMessage.className = 'muted';
     emptyMessage.textContent = 'No hay actividades registradas.';
     activitiesAccordionEl.appendChild(emptyMessage);
+    updateActivitiesSearchStatus('', false);
     return;
   }
 
   const fieldMap = getActivityFieldMap();
+  const query = normalizeMatchValue(activitiesSearchInputEl?.value ?? '');
+  const filteredRows = query
+    ? actividadesRows.filter((row) => {
+        const code = normalizeMatchValue(row?.[fieldMap.actividadCode]);
+        const name = normalizeMatchValue(row?.[fieldMap.actividadName]);
+        const link = normalizeMatchValue(row?.[fieldMap.actividadLink]);
+        return [code, name, link].some((value) => value && value.includes(query));
+      })
+    : actividadesRows;
   const rowMap = new Map();
-  actividadesRows.forEach((row) => {
+  filteredRows.forEach((row) => {
     const rowData = buildActivityRowData(row, fieldMap);
     const nameKey = normalizeMatchValue(rowData.actividadName);
     const codeKey = normalizeMatchValue(rowData.actividadValue);
@@ -3455,6 +3454,18 @@ function renderActividadesAccordion() {
       rowMap.set(key, { row, rowData });
     }
   });
+
+  if (!rowMap.size) {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'muted';
+    emptyMessage.textContent = 'No se encontraron actividades.';
+    activitiesAccordionEl.appendChild(emptyMessage);
+    updateActivitiesSearchStatus(
+      query ? `Resultados: 0 de ${actividadesRows.length}.` : '',
+      false,
+    );
+    return;
+  }
 
   Array.from(rowMap.values()).forEach(({ row, rowData }) => {
     const details = document.createElement('details');
@@ -3517,6 +3528,15 @@ function renderActividadesAccordion() {
 
     activitiesAccordionEl.appendChild(details);
   });
+
+  if (query) {
+    updateActivitiesSearchStatus(
+      `Resultados: ${rowMap.size} de ${actividadesRows.length}.`,
+      false,
+    );
+  } else {
+    updateActivitiesSearchStatus('', false);
+  }
 }
 
 function getEditableActivityFields() {
@@ -3863,44 +3883,6 @@ async function loadLinkedSeriesForActivity(activityData, statusEl, tableEl) {
   if (tableEl) tableEl.dataset.loaded = 'true';
 }
 
-async function handleActivityCreateSubmit(event) {
-  event.preventDefault();
-  if (!userCanEdit()) {
-    updateActivityCreateStatus('Solo los administradores pueden crear actividades.', true);
-    return;
-  }
-  if (!supabaseClient) {
-    updateActivityCreateStatus('Configura Supabase antes de guardar.', true);
-    return;
-  }
-  const table = getActividadesTableForActive();
-  if (!table) {
-    updateActivityCreateStatus('No hay tabla de actividades configurada.', true);
-    return;
-  }
-  const codigoActividad = normalizeInputValue(activityCreateCodigoActividadEl.value);
-  const actividadNombre = normalizeInputValue(activityCreateNombreEl.value);
-  if (!codigoActividad || !actividadNombre) {
-    updateActivityCreateStatus('Completa código y nombre de la actividad.', true);
-    return;
-  }
-  const fieldMap = getActivityFieldMap();
-  updateActivityCreateStatus('Guardando actividad...', false);
-  const payload = {
-    [fieldMap.actividadCode]: codigoActividad,
-    [fieldMap.actividadName]: actividadNombre,
-  };
-  const { error } = await supabaseClient.from(table).insert([payload]);
-  if (error) {
-    updateActivityCreateStatus(mapSupabaseError(error), true);
-    return;
-  }
-  updateActivityCreateStatus('Actividad guardada.', false);
-  activityCreateCodigoActividadEl.value = '';
-  activityCreateNombreEl.value = '';
-  await loadActividades(table);
-}
-
 async function openActivitiesView(table, label) {
   if (!table) {
     showMessage('No hay tabla de actividades configurada para este cuadro.', true);
@@ -3909,7 +3891,10 @@ async function openActivitiesView(table, label) {
   activeTable = table;
   activeModelFilter = null;
   showActivitiesView();
-  updateActivityCreateStatus('', false);
+  if (activitiesSearchInputEl) {
+    activitiesSearchInputEl.value = '';
+  }
+  updateActivitiesSearchStatus('', false);
   showActivitiesMessage(`Gestión de actividades para ${label}.`, false);
   await loadActividades(getActividadesTableForActive());
 }
@@ -4269,7 +4254,21 @@ detailDrawerEl.addEventListener('click', (event) => {
 backToCuadrosButton.addEventListener('click', () => {
   showCuadrosView();
 });
-activityCreateFormEl.addEventListener('submit', handleActivityCreateSubmit);
+if (activitiesSearchInputEl) {
+  activitiesSearchInputEl.addEventListener('input', () => {
+    renderActividadesView();
+  });
+}
+
+if (activitiesSearchClearEl) {
+  activitiesSearchClearEl.addEventListener('click', () => {
+    if (activitiesSearchInputEl) {
+      activitiesSearchInputEl.value = '';
+      renderActividadesView();
+      activitiesSearchInputEl.focus();
+    }
+  });
+}
 if (activitiesExpandAllButton) {
   activitiesExpandAllButton.addEventListener('click', () => {
     if (!activitiesAccordionEl) return;

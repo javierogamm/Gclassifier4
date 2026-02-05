@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.43.9
+
+- En la gestión de actividades se reemplazó el formulario de alta por un buscador con limpieza rápida y contador de resultados.
+- Se eliminó la opción de crear actividades desde la interfaz.
+- Se actualizó la versión visible de la app.
+
 ## v0.43.8
 
 - Al abrir una actividad en el acordeón se listan todas las series vinculadas usando nombre y código como referencia.
