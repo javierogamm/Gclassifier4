@@ -1,5 +1,18 @@
 # Log de cambios
 
+## v0.45.1
+
+- Se ajustó la exportación EXCEL para separar la información en columnas: Código jerárquico, Código, Nivel superior, Nombre y Categoría.
+- Se mantuvo el formato visual en Excel (negritas, cursivas, colores, bordes e indentación jerárquica en el nombre).
+- Se actualizó la versión visible de la app.
+
+## v0.45.0
+
+- Se añadió un nuevo botón de exportación a EXCEL junto al de PDF en cada cuadro.
+- La exportación EXCEL replica la estructura jerárquica visible en PDF con cabecera de modelo/filtros, numeración, negritas, cursivas y estilos de celda.
+- Se incorporó ExcelJS por CDN para generar archivos `.xlsx` en cliente.
+- Se actualizó la versión visible de la app.
+
 ## v0.44.0
 
 - El buscador de actividades ahora aplica el filtro con un botón "Buscar" y permite ejecutar la búsqueda con Enter.

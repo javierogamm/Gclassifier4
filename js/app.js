@@ -2020,6 +2020,14 @@ function renderCatalog(entities) {
       >
         Exportar PDF
       </button>
+      <button
+        class="secondary"
+        type="button"
+        data-export-excel="true"
+        data-auth-required="true"
+      >
+        Exportar EXCEL
+      </button>
     `;
     const selectButton = document.createElement('button');
     selectButton.className = 'secondary header-action-button';
@@ -2070,6 +2078,12 @@ function renderCatalog(entities) {
   catalogEl.querySelectorAll('button[data-export-pdf]').forEach((button) => {
     button.addEventListener('click', () => {
       exportPdfForModel();
+    });
+  });
+
+  catalogEl.querySelectorAll('button[data-export-excel]').forEach((button) => {
+    button.addEventListener('click', () => {
+      exportExcelForModel();
     });
   });
 
@@ -2189,6 +2203,156 @@ async function exportPdfForModel() {
     printWindow.print();
     printWindow.close();
   }, 250);
+}
+
+async function triggerExcelDownload(filename, workbook) {
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function flattenHierarchyNodes(nodes, depth = 0, prefix = '', parentCodigo = '—') {
+  const flattened = [];
+  nodes.forEach((node, index) => {
+    const hierarchyLabel = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
+    const { codigoSerie } = getDisplayValuesForRow(node.row);
+    flattened.push({
+      node,
+      depth,
+      hierarchyLabel,
+      parentCodigo,
+    });
+    if (node.children?.length) {
+      flattened.push(
+        ...flattenHierarchyNodes(node.children, depth + 1, hierarchyLabel, codigoSerie || '—'),
+      );
+    }
+  });
+  return flattened;
+}
+
+async function exportExcelForModel() {
+  if (!userIsLoggedIn()) {
+    showMessage('Inicia sesión para exportar EXCEL.', true);
+    return;
+  }
+  if (!activeTable || !activeModelFilter) {
+    showMessage('Selecciona un modelo antes de exportar el EXCEL.', true);
+    return;
+  }
+  if (!window.ExcelJS) {
+    showMessage('No se encontró ExcelJS para generar el archivo EXCEL.', true);
+    return;
+  }
+
+  await logDownload('EXCEL', activeModelFilter);
+  const searchFilters = getSearchFilters();
+  const visibleRows = filterRowsWithHierarchy(activeRows || [], searchFilters);
+  if (!visibleRows.length) {
+    showMessage('No hay resultados para exportar.', true);
+    return;
+  }
+
+  const hierarchy = buildHierarchy(visibleRows);
+  if (!hierarchy.length) {
+    showMessage('No hay filas raíz para exportar.', true);
+    return;
+  }
+
+  showMessage('Generando EXCEL...', false);
+  const header = buildPdfHeader();
+  const workbook = new window.ExcelJS.Workbook();
+  workbook.creator = 'Gclassifier4';
+  workbook.created = new Date();
+  const worksheet = workbook.addWorksheet('Resultados');
+
+  worksheet.columns = [
+    { key: 'codigoJerarquico', width: 20 },
+    { key: 'codigo', width: 18 },
+    { key: 'nivelSuperior', width: 20 },
+    { key: 'nombre', width: 60 },
+    { key: 'categoria', width: 28 },
+  ];
+
+  worksheet.mergeCells('A1:E1');
+  worksheet.getCell('A1').value = header.title;
+  worksheet.getCell('A1').font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FF1F2933' } };
+
+  worksheet.mergeCells('A2:E2');
+  worksheet.getCell('A2').value = header.filters;
+  worksheet.getCell('A2').font = { name: 'Segoe UI', size: 11, color: { argb: 'FF52606D' } };
+
+  worksheet.mergeCells('A3:E3');
+  worksheet.getCell('A3').value = `Generado: ${header.generatedAt}`;
+  worksheet.getCell('A3').font = { name: 'Segoe UI', size: 11, color: { argb: 'FF52606D' } };
+
+  const headerRow = worksheet.getRow(5);
+  headerRow.values = ['Código jerárquico', 'Código', 'Nivel superior', 'Nombre', 'Categoría'];
+  headerRow.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1F2933' } };
+  headerRow.eachCell((cell) => {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFEFF4FA' },
+    };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+      left: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+      bottom: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+      right: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+    };
+  });
+
+  const flatNodes = flattenHierarchyNodes(hierarchy);
+  let rowIndex = 6;
+  flatNodes.forEach(({ node, depth, hierarchyLabel, parentCodigo }) => {
+    const { codigoSerie, tituloSerie, categoria } = getDisplayValuesForRow(node.row);
+    const row = worksheet.getRow(rowIndex);
+    row.getCell(1).value = hierarchyLabel;
+    row.getCell(2).value = codigoSerie;
+    row.getCell(3).value = depth === 0 ? '—' : parentCodigo;
+    row.getCell(4).value = tituloSerie;
+    row.getCell(5).value = categoria;
+
+    row.getCell(1).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF334E68' } };
+    row.getCell(2).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1F2933' } };
+    row.getCell(3).font = { name: 'Segoe UI', size: 11, color: { argb: 'FF52606D' } };
+    row.getCell(4).font = { name: 'Segoe UI', size: 11, color: { argb: 'FF1F2933' } };
+    row.getCell(5).font = { name: 'Segoe UI', size: 11, italic: true, color: { argb: 'FF52606D' } };
+
+    row.eachCell((cell, colNumber) => {
+      cell.alignment = {
+        vertical: 'middle',
+        wrapText: true,
+        indent: colNumber === 4 ? depth * 2 : 0,
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+      };
+    });
+
+    row.height = 22;
+    rowIndex += 1;
+  });
+
+  const modelSegment = buildFileSegment(activeModelFilter.label, 'MODELO');
+  const languageSegment = activeLanguageFilter
+    ? `_${buildFileSegment(activeLanguageFilter.label, 'IDIOMA')}`
+    : '';
+  await triggerExcelDownload(`${modelSegment}${languageSegment}_RESULTADOS.xlsx`, workbook);
+  showMessage('EXCEL generado correctamente.', false);
 }
 
 async function loadRows(table, modelFilter = null, languageFilter = activeLanguageFilter) {
