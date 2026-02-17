@@ -1,5 +1,11 @@
 # Log de cambios
 
+## v0.45.1
+
+- Se ajustó la exportación EXCEL para separar la información en columnas: Código jerárquico, Código, Nivel superior, Nombre y Categoría.
+- Se mantuvo el formato visual en Excel (negritas, cursivas, colores, bordes e indentación jerárquica en el nombre).
+- Se actualizó la versión visible de la app.
+
 ## v0.45.0
 
 - Se añadió un nuevo botón de exportación a EXCEL junto al de PDF en cada cuadro.

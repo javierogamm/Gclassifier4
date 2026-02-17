@@ -2220,13 +2220,21 @@ async function triggerExcelDownload(filename, workbook) {
   URL.revokeObjectURL(url);
 }
 
-function flattenHierarchyNodes(nodes, depth = 0, prefix = '') {
+function flattenHierarchyNodes(nodes, depth = 0, prefix = '', parentCodigo = '—') {
   const flattened = [];
   nodes.forEach((node, index) => {
     const hierarchyLabel = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
-    flattened.push({ node, depth, hierarchyLabel });
+    const { codigoSerie } = getDisplayValuesForRow(node.row);
+    flattened.push({
+      node,
+      depth,
+      hierarchyLabel,
+      parentCodigo,
+    });
     if (node.children?.length) {
-      flattened.push(...flattenHierarchyNodes(node.children, depth + 1, hierarchyLabel));
+      flattened.push(
+        ...flattenHierarchyNodes(node.children, depth + 1, hierarchyLabel, codigoSerie || '—'),
+      );
     }
   });
   return flattened;
@@ -2267,43 +2275,75 @@ async function exportExcelForModel() {
   workbook.created = new Date();
   const worksheet = workbook.addWorksheet('Resultados');
 
-  worksheet.columns = [{ width: 120 }, { width: 2 }, { width: 2 }, { width: 2 }];
-  worksheet.mergeCells('A1:D1');
+  worksheet.columns = [
+    { key: 'codigoJerarquico', width: 20 },
+    { key: 'codigo', width: 18 },
+    { key: 'nivelSuperior', width: 20 },
+    { key: 'nombre', width: 60 },
+    { key: 'categoria', width: 28 },
+  ];
+
+  worksheet.mergeCells('A1:E1');
   worksheet.getCell('A1').value = header.title;
   worksheet.getCell('A1').font = { name: 'Segoe UI', size: 14, bold: true, color: { argb: 'FF1F2933' } };
 
-  worksheet.mergeCells('A2:D2');
+  worksheet.mergeCells('A2:E2');
   worksheet.getCell('A2').value = header.filters;
   worksheet.getCell('A2').font = { name: 'Segoe UI', size: 11, color: { argb: 'FF52606D' } };
 
-  worksheet.mergeCells('A3:D3');
+  worksheet.mergeCells('A3:E3');
   worksheet.getCell('A3').value = `Generado: ${header.generatedAt}`;
   worksheet.getCell('A3').font = { name: 'Segoe UI', size: 11, color: { argb: 'FF52606D' } };
 
+  const headerRow = worksheet.getRow(5);
+  headerRow.values = ['Código jerárquico', 'Código', 'Nivel superior', 'Nombre', 'Categoría'];
+  headerRow.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1F2933' } };
+  headerRow.eachCell((cell) => {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFEFF4FA' },
+    };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+      left: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+      bottom: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+      right: { style: 'thin', color: { argb: 'FFD0D7E2' } },
+    };
+  });
+
   const flatNodes = flattenHierarchyNodes(hierarchy);
-  let rowIndex = 5;
-  flatNodes.forEach(({ node, depth, hierarchyLabel }) => {
+  let rowIndex = 6;
+  flatNodes.forEach(({ node, depth, hierarchyLabel, parentCodigo }) => {
     const { codigoSerie, tituloSerie, categoria } = getDisplayValuesForRow(node.row);
     const row = worksheet.getRow(rowIndex);
-    const cell = row.getCell(1);
-    cell.value = {
-      richText: [
-        { text: `${hierarchyLabel} `, font: { bold: true, color: { argb: 'FF334E68' } } },
-        { text: `${codigoSerie} `, font: { bold: true, color: { argb: 'FF1F2933' } } },
-        { text: '- ', font: { color: { argb: 'FF9FB3C8' } } },
-        { text: `${tituloSerie} `, font: { color: { argb: 'FF1F2933' } } },
-        { text: '- ', font: { color: { argb: 'FF9FB3C8' } } },
-        { text: `${categoria}`, font: { italic: true, color: { argb: 'FF52606D' } } },
-      ],
-    };
-    cell.alignment = { indent: depth * 2, vertical: 'middle', wrapText: true };
-    cell.border = {
-      top: { style: 'thin', color: { argb: 'FFE4E7EB' } },
-      left: { style: 'thin', color: { argb: 'FFE4E7EB' } },
-      bottom: { style: 'thin', color: { argb: 'FFE4E7EB' } },
-      right: { style: 'thin', color: { argb: 'FFE4E7EB' } },
-    };
-    row.height = 24;
+    row.getCell(1).value = hierarchyLabel;
+    row.getCell(2).value = codigoSerie;
+    row.getCell(3).value = depth === 0 ? '—' : parentCodigo;
+    row.getCell(4).value = tituloSerie;
+    row.getCell(5).value = categoria;
+
+    row.getCell(1).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF334E68' } };
+    row.getCell(2).font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FF1F2933' } };
+    row.getCell(3).font = { name: 'Segoe UI', size: 11, color: { argb: 'FF52606D' } };
+    row.getCell(4).font = { name: 'Segoe UI', size: 11, color: { argb: 'FF1F2933' } };
+    row.getCell(5).font = { name: 'Segoe UI', size: 11, italic: true, color: { argb: 'FF52606D' } };
+
+    row.eachCell((cell, colNumber) => {
+      cell.alignment = {
+        vertical: 'middle',
+        wrapText: true,
+        indent: colNumber === 4 ? depth * 2 : 0,
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE4E7EB' } },
+      };
+    });
+
+    row.height = 22;
     rowIndex += 1;
   });
 
