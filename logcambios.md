@@ -1,5 +1,12 @@
 # Log de cambios
 
+## v0.46.0
+
+- Se incorporó una estructura backend para Next.js 13+ con `lib/supabaseAdmin.ts`, usando `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` exclusivamente del lado servidor.
+- Se añadió un ejemplo de API Route `app/api/documentos/route.ts` que valida sesión básica por cookie/token y consulta la tabla `documentos` sin exponer claves al cliente.
+- Se documentó el refactor de seguridad con ejemplos frontend antes/después para reemplazar llamadas directas `supabase.from()` por `fetch('/api/documentos')`.
+- Se actualizó la versión visible de la app.
+
 ## v0.45.1
 
 - Se ajustó la exportación EXCEL para separar la información en columnas: Código jerárquico, Código, Nivel superior, Nombre y Categoría.

@@ -1,16 +1,16 @@
 # CDC Catalog + Supabase (Vercel-only)
 
 Frontend estático en HTML + JS (ES Modules) diseñado **solo** para despliegue en Vercel,
-con inyección de variables mediante `/api/env.js` y conexión segura a Supabase usando
-**solo** la ANON/PUBLISHABLE KEY.
+con una arquitectura segura donde el frontend consume API Routes y el backend consulta Supabase con `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## ✅ Requisitos
 
 - Cuenta en **Vercel**.
 - Proyecto en **Supabase**.
-- Variables de entorno:
+- Variables de entorno backend:
   - `SUPABASE_URL`
-  - `SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `APP_SESSION_TOKEN`
   - (Opcional) `CDC_CATALOG`
 
 > ⚠️ **Nunca** uses `service_role` en el frontend.
@@ -23,34 +23,30 @@ con inyección de variables mediante `/api/env.js` y conexión segura a Supabase
 2. En Vercel, crea un nuevo proyecto y selecciona tu repo.
 3. En **Settings → Environment Variables**, agrega:
    - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `APP_SESSION_TOKEN`
    - `CDC_CATALOG` (opcional, JSON en string)
 4. Haz deploy.
 
-### ¿Dónde saco SUPABASE_URL y ANON KEY?
+### ¿Dónde saco SUPABASE_URL y SERVICE ROLE KEY?
 
 1. Abre tu proyecto en Supabase.
 2. Ve a **Project Settings → API**.
 3. Copia:
    - **Project URL** → `SUPABASE_URL`
-   - **Anon public key** → `SUPABASE_ANON_KEY`
+   - **Service role key** → `SUPABASE_SERVICE_ROLE_KEY`
 
 ---
 
-## 2. Inyección de variables (/api/env.js)
+## 2. Configuración de backend (/api/*)
 
-Vercel expone un endpoint serverless que retorna un JS con:
+Las API Routes leen variables de entorno directamente desde el servidor y no las exponen al navegador.
 
-```js
-window.ENV = {
-  SUPABASE_URL: "...",
-  SUPABASE_ANON_KEY: "...",
-  CDC_CATALOG: "..."
-};
-```
+Ejemplo de variables usadas por backend:
 
-Si el endpoint no existe o las variables están vacías, la UI muestra el aviso:
-**"Este proyecto está diseñado para Vercel…"**
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `APP_SESSION_TOKEN`
 
 ---
 
@@ -107,12 +103,24 @@ Ejemplo:
 
 ---
 
+
+## Refactor recomendado (Next.js 13+)
+
+Se incluye una referencia lista para usar:
+
+- `lib/supabaseAdmin.ts`
+- `app/api/documentos/route.ts`
+- `docs/seguridad-supabase-next13.md`
+
+En este patrón, el cliente ya no usa `supabase.from()` ni `SUPABASE_ANON_KEY`;
+usa `fetch('/api/documentos')` y toda consulta SQL queda en backend.
+
 ## 6. Troubleshooting
 
 | Problema | Posible causa | Solución |
 |---|---|---|
 | UI dice “Vercel-only” | `/api/env.js` no disponible | Verifica deploy y `vercel.json` |
-| Error 401/403 | RLS/policies bloquean | Revisa policies y rol `anon` |
+| Error 401/403 | Sesión inválida o faltante | Revisa cookie/token de sesión (`APP_SESSION_TOKEN`) |
 | Error 404 | Tabla inexistente | Ejecuta migraciones y revisa nombre de tabla |
 | Ping falla | RPC no creada | Asegúrate de ejecutar `0001_init.sql` |
 
@@ -120,9 +128,10 @@ Ejemplo:
 
 ## 7. Seguridad
 
-- ✅ Usa **solo** `SUPABASE_ANON_KEY` en el frontend.
-- ❌ **Nunca** expongas `service_role`.
-- 🔒 Activa RLS y policies (ya incluidas en `0001_init.sql`).
+- ✅ El frontend solo llama a API Routes internas (`/api/...`).
+- ✅ `SUPABASE_SERVICE_ROLE_KEY` se usa únicamente en backend (`lib/supabaseAdmin.ts`).
+- ❌ **Nunca** expongas `service_role` ni claves en `NEXT_PUBLIC_*`.
+- 🔒 El control de acceso se aplica en backend con validación básica de sesión.
 
 ---
 
